@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     jwt_secret: str = "development-only-change-me"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 30
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.5-flash"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
