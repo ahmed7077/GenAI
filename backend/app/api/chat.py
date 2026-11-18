@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.ai import GeminiProvider
 from app.api.auth import get_current_user, get_session
 from app.models import SecurityEvent, User
+from app.rag import retrieve
 from app.core.config import get_settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -18,15 +19,19 @@ class ChatRequest(BaseModel):
 
 
 @router.post("")
-async def chat(payload: ChatRequest, user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict[str, str]:
+async def chat(payload: ChatRequest, user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> dict[str, object]:
     events = session.scalars(select(SecurityEvent).order_by(SecurityEvent.occurred_at.desc()).limit(25)).all()
     evidence = "\n".join(
         f"event={event.id}; time={event.occurred_at.isoformat()}; type={event.event_type}; source={event.source_ip}; host={event.host}; outcome={event.outcome}"
         for event in events
     ) or "No stored events are available."
+    sources = retrieve(payload.question)
+    source_context = "\n".join(
+        f"[{source['id']}] {source['title']}: {source['excerpt']} ({source['url']})" for source in sources
+    )
     try:
         answer = await asyncio.wait_for(
-            asyncio.to_thread(GeminiProvider().generate, payload.question, evidence),
+            asyncio.to_thread(GeminiProvider().generate, payload.question, f"{evidence}\n\nTrusted RAG sources:\n{source_context}"),
             timeout=get_settings().ai_timeout_seconds,
         )
     except TimeoutError as error:
@@ -43,4 +48,6 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
                 detail="Gemini is temporarily unavailable because of provider demand. Please retry in a moment.",
             ) from error
         raise HTTPException(status_code=502, detail="AI provider request failed; no answer was generated.") from error
-    return {"answer": answer, "evidence_count": str(len(events))}
+    citations = "\n".join(f"- {source['title']}: {source['url']}" for source in sources)
+    answer = f"{answer}\n\nRetrieved guidance:\n{citations}"
+    return {"answer": answer, "evidence_count": len(events), "sources": sources}
