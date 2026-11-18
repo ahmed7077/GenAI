@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     jwt_secret: str = "development-only-change-me"
     jwt_algorithm: str = "HS256"
-    access_token_minutes: int = 30
+    access_token_minutes: int = 480
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.5-flash"
     gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-3.8-flash,gemini-flash-latest"
