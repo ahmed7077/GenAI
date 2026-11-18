@@ -26,14 +26,17 @@ class NormalizedEvent(BaseModel):
 
 
 def normalize_event(payload: dict[str, Any]) -> NormalizedEvent:
-    timestamp = payload.get("occurred_at") or payload.get("timestamp") or payload.get("time")
+    timestamp = payload.get("occurred_at") or payload.get("timestamp") or payload.get("time") or payload.get("created_at")
     if not timestamp:
         raise ValueError("Event timestamp is required")
-    occurred_at = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+    if isinstance(timestamp, (int, float)) or str(timestamp).isdigit():
+        occurred_at = datetime.fromtimestamp(int(timestamp) / 1000, tz=UTC)
+    else:
+        occurred_at = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
     if occurred_at.tzinfo is None:
         occurred_at = occurred_at.replace(tzinfo=UTC)
     return NormalizedEvent(
-        event_type=str(payload.get("event_type") or payload.get("type") or "unknown"),
+        event_type=str(payload.get("event_type") or payload.get("type") or payload.get("action") or "unknown"),
         occurred_at=occurred_at,
         source_ip=payload.get("source_ip") or payload.get("src_ip"),
         host=payload.get("host") or payload.get("hostname"),

@@ -13,3 +13,10 @@ def test_json_events_are_normalized_with_original_evidence() -> None:
 def test_event_parser_rejects_unsupported_content() -> None:
     with pytest.raises(ValueError, match="Only JSON"):
         parse_events(b"not an event", "text/plain")
+
+
+def test_github_security_log_epoch_is_normalized() -> None:
+    events = parse_events(b'created_at,action,actor\n1429548104000,repo.create,octocat\n', "text/csv")
+
+    assert events[0].event_type == "repo.create"
+    assert events[0].actor == "octocat"
