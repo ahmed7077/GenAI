@@ -615,6 +615,7 @@ function Models({
   const [loadingSample, setLoadingSample] = useState(false);
   const [sampleName, setSampleName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [sampleRow, setSampleRow] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchResult, setBatchResult] = useState<{
     flows_scored: number;
@@ -625,13 +626,14 @@ function Models({
     mean_attack_probability: number;
     highest_risk_flows: Array<{ row: number; attack_probability: number; isolation_forest_anomaly: boolean; source_label?: string }>;
   } | null>(null);
-  async function loadSample(file: File) {
+  async function loadSample(file: File, requestedRow?: string) {
     setLoadingSample(true);
     setError("");
     const form = new FormData();
     form.append("file", file);
     try {
-      const r = await fetch(`${API}/models/flow-sample`, {
+      const query = requestedRow && Number(requestedRow) > 0 ? `?row_number=${encodeURIComponent(requestedRow)}` : "";
+      const r = await fetch(`${API}/models/flow-sample${query}`, {
         method: "POST",
         headers,
         body: form,
@@ -742,6 +744,7 @@ function Models({
             />
           </label>
           {sampleName && <small className="sample-name">{sampleName}</small>}
+          {selectedFile && <div className="row-picker"><input type="number" min="1" value={sampleRow} onChange={e => setSampleRow(e.target.value)} placeholder="Row number"/><button className="button" type="button" disabled={!sampleRow || loadingSample} onClick={() => void loadSample(selectedFile, sampleRow)}>Load row</button></div>}
           <button className="button batch-score" type="button" disabled={!selectedFile || batchBusy} onClick={scoreBatch}>
             {batchBusy ? "Scoring full CSV…" : "Score entire selected CSV"}
           </button>

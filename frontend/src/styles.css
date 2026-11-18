@@ -404,6 +404,7 @@ main {
 .model-help { margin: 10px 0 14px; font-size: 13px; }
 .sample-picker { display: inline-block; margin-bottom: 12px; background: #426b62; color: #f3ead9; }
 .sample-name { display: block; margin: -4px 0 12px; color: #8ed3dc; }
+.row-picker { display: flex; gap: 8px; margin: 0 0 12px; }.row-picker input { width: 135px; border: 1px solid #665d46; border-radius: 8px; background: #23251e; color: #f6ead6; padding: 8px 10px; font: 12px "DM Mono"; }.row-picker .button { background: #344b45; color: #e9eee5; padding: 8px 12px; }
 .batch-score { margin: 0 0 8px; background: #466781; color: #f3ead9; }
 .batch-result { margin-top: 18px; border-top: 1px solid #5d543d; padding-top: 16px; }
 .batch-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }

@@ -7,7 +7,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
 from app.api.auth import get_current_user
@@ -87,6 +87,7 @@ async def predict_flow(
 @router.post("/flow-sample")
 async def load_flow_sample(
     file: UploadFile = File(...), user: User = Depends(get_current_user)
+    , row_number: int | None = Query(default=None, ge=1)
 ) -> dict[str, object]:
     """Extract the first complete CICIDS2017 flow from a user-selected CSV."""
     if not (file.filename or "").lower().endswith(".csv"):
@@ -112,6 +113,11 @@ async def load_flow_sample(
         if first_row is None:
             first_row = chunk.iloc[0]
         label_column = next((name for name in chunk.columns if name.lower() == "label"), None)
+        if row_number is not None and offset < row_number <= offset + len(chunk):
+            selected_row = chunk.iloc[row_number - offset - 1]
+            selected_label = str(selected_row[label_column]).strip() if label_column else None
+            selected_index = row_number
+            break
         if label_column:
             labels = chunk[label_column].astype(str).str.strip()
             attacks = chunk[labels.str.upper() != "BENIGN"]
@@ -144,7 +150,7 @@ async def load_flow_sample(
         "filename": file.filename,
         "source_label": selected_label,
         "source_row": selected_index,
-        "selection": "first non-BENIGN labelled row" if selected_label else "first row (no label column)",
+        "selection": f"requested row {row_number}" if row_number else ("first non-BENIGN labelled row" if selected_label else "first row (no label column)"),
     }
 
 
