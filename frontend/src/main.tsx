@@ -614,6 +614,17 @@ function Models({
   const [error, setError] = useState("");
   const [loadingSample, setLoadingSample] = useState(false);
   const [sampleName, setSampleName] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchResult, setBatchResult] = useState<{
+    flows_scored: number;
+    attack_count: number;
+    attack_rate: number;
+    anomaly_count: number;
+    anomaly_rate: number;
+    mean_attack_probability: number;
+    highest_risk_flows: Array<{ row: number; attack_probability: number; isolation_forest_anomaly: boolean; source_label?: string }>;
+  } | null>(null);
   async function loadSample(file: File) {
     setLoadingSample(true);
     setError("");
@@ -627,6 +638,7 @@ function Models({
       });
       if (!r.ok) throw Error(await fail(r));
       const data = await r.json();
+      setSelectedFile(file);
       setPayload(JSON.stringify(data.features, null, 2));
       setSampleName(
         `${data.filename} · row ${data.source_row} · ${data.feature_count} features loaded${data.source_label ? ` · dataset label: ${data.source_label}` : ""}`,
@@ -636,6 +648,23 @@ function Models({
       setError(x instanceof Error ? x.message : "Could not load flow sample.");
     } finally {
       setLoadingSample(false);
+    }
+  }
+  async function scoreBatch() {
+    if (!selectedFile) return;
+    setBatchBusy(true);
+    setError("");
+    setBatchResult(null);
+    const form = new FormData();
+    form.append("file", selectedFile);
+    try {
+      const r = await fetch(`${API}/models/score-csv`, { method: "POST", headers, body: form });
+      if (!r.ok) throw Error(await fail(r));
+      setBatchResult(await r.json());
+    } catch (x) {
+      setError(x instanceof Error ? x.message : "Batch scoring failed.");
+    } finally {
+      setBatchBusy(false);
     }
   }
   async function predict(e: FormEvent) {
@@ -713,6 +742,10 @@ function Models({
             />
           </label>
           {sampleName && <small className="sample-name">{sampleName}</small>}
+          <button className="button batch-score" type="button" disabled={!selectedFile || batchBusy} onClick={scoreBatch}>
+            {batchBusy ? "Scoring full CSV…" : "Score entire selected CSV"}
+          </button>
+          <p className="model-help">Batch scoring analyzes every compatible flow in the selected file and surfaces aggregate rates plus the ten highest-risk rows.</p>
           <form onSubmit={predict}>
             <textarea
               value={payload}
@@ -727,6 +760,15 @@ function Models({
           </form>
           {error && <p className="error">{error}</p>}
           {result && <pre>{result}</pre>}
+          {batchResult && (
+            <section className="batch-result">
+              <small>BATCH FLOW ANALYSIS</small>
+              <div className="batch-metrics"><b>{batchResult.flows_scored.toLocaleString()}<span>flows scored</span></b><b>{(batchResult.attack_rate * 100).toFixed(1)}%<span>attack-model rate</span></b><b>{(batchResult.anomaly_rate * 100).toFixed(1)}%<span>anomaly rate</span></b></div>
+              <p>{batchResult.attack_count.toLocaleString()} flows scored as attack; {batchResult.anomaly_count.toLocaleString()} flagged as anomalous. Mean attack probability: {batchResult.mean_attack_probability.toFixed(4)}.</p>
+              <small>HIGHEST-RISK SOURCE ROWS</small>
+              <ol>{batchResult.highest_risk_flows.slice(0,5).map(flow => <li key={flow.row}>Row {flow.row}: {(flow.attack_probability * 100).toFixed(2)}% model probability{flow.isolation_forest_anomaly ? " · anomaly" : ""}{flow.source_label ? ` · dataset label: ${flow.source_label}` : ""}</li>)}</ol>
+            </section>
+          )}
         </article>
       </section>
     </>

@@ -146,3 +146,73 @@ async def load_flow_sample(
         "source_row": selected_index,
         "selection": "first non-BENIGN labelled row" if selected_label else "first row (no label column)",
     }
+
+
+@router.post("/score-csv")
+async def score_flow_csv(
+    file: UploadFile = File(...), user: User = Depends(get_current_user)
+) -> dict[str, object]:
+    """Score every compatible flow in a CSV in bounded-memory chunks."""
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=422, detail="Select a CICIDS2017 CSV file.")
+    try:
+        forest_artifact = _load_artifact("random_forest.joblib")
+        isolation_artifact = _load_artifact("isolation_forest.joblib")
+        await file.seek(0)
+        chunks = pd.read_csv(file.file, chunksize=50_000)
+    except (FileNotFoundError, pd.errors.ParserError, UnicodeDecodeError) as error:
+        raise HTTPException(status_code=422, detail="Could not read this CICIDS2017 CSV.") from error
+
+    columns = forest_artifact["columns"]
+    scored = attacks = anomalies = 0
+    probability_total = 0.0
+    highest: list[dict[str, object]] = []
+    offset = 0
+    source_labels: dict[str, int] = {}
+    for chunk in chunks:
+        chunk.columns = [str(name).strip() for name in chunk.columns]
+        missing = [column for column in columns if column not in chunk.columns]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "This is not a complete CICIDS2017 flow CSV.", "missing_features": missing},
+            )
+        features = chunk[columns].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
+        forest_values = forest_artifact["imputer"].transform(features)
+        isolation_values = isolation_artifact["imputer"].transform(features)
+        probabilities = forest_artifact["model"].predict_proba(forest_values)[:, 1]
+        anomaly_flags = isolation_artifact["model"].predict(isolation_values) == -1
+        label_column = next((name for name in chunk.columns if name.lower() == "label"), None)
+        labels = chunk[label_column].astype(str).str.strip() if label_column else None
+        if labels is not None:
+            for label, count in labels.value_counts().items():
+                source_labels[str(label)] = source_labels.get(str(label), 0) + int(count)
+        scored += len(chunk)
+        attacks += int((probabilities >= 0.5).sum())
+        anomalies += int(anomaly_flags.sum())
+        probability_total += float(probabilities.sum())
+        for position in np.argsort(probabilities)[-5:]:
+            highest.append(
+                {
+                    "row": offset + int(position) + 1,
+                    "attack_probability": round(float(probabilities[position]), 6),
+                    "isolation_forest_anomaly": bool(anomaly_flags[position]),
+                    "source_label": str(labels.iloc[position]) if labels is not None else None,
+                }
+            )
+        highest = sorted(highest, key=lambda item: float(item["attack_probability"]), reverse=True)[:10]
+        offset += len(chunk)
+    if not scored:
+        raise HTTPException(status_code=422, detail="The selected CSV has no flow records.")
+    return {
+        "filename": file.filename,
+        "flows_scored": scored,
+        "attack_count": attacks,
+        "attack_rate": attacks / scored,
+        "anomaly_count": anomalies,
+        "anomaly_rate": anomalies / scored,
+        "mean_attack_probability": probability_total / scored,
+        "highest_risk_flows": highest,
+        "source_label_counts": source_labels or None,
+        "evidence_note": "Batch results are model signals for analyst review, not incident verdicts.",
+    }
