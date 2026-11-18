@@ -1,7 +1,6 @@
 """Read-only access to locally trained CICIDS2017 model artifacts."""
 
 import json
-from io import BytesIO
 from functools import lru_cache
 from pathlib import Path
 
@@ -91,11 +90,11 @@ async def load_flow_sample(
     """Extract the first complete CICIDS2017 flow from a user-selected CSV."""
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=422, detail="Select a CICIDS2017 CSV file.")
-    content = await file.read()
-    if len(content) > 25 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="CSV must be 25 MiB or smaller.")
     try:
-        row = pd.read_csv(BytesIO(content), nrows=1)
+        # UploadFile is spooled to disk by FastAPI. Read only one row instead of
+        # buffering a multi-hundred-megabyte CICIDS file into application memory.
+        await file.seek(0)
+        row = pd.read_csv(file.file, nrows=1)
     except (UnicodeDecodeError, pd.errors.ParserError) as error:
         raise HTTPException(status_code=422, detail="Could not read this CSV file.") from error
     try:
