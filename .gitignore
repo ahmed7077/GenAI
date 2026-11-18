@@ -14,6 +14,7 @@ models/*.joblib
 models/*.json
 !models/.gitkeep
 *.sqlite3
+backend/threatlens.db
 *.egg-info/
 *.tsbuildinfo
 

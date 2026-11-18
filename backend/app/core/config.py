@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     database_url: str = "sqlite:///./threatlens.db"
     cors_origins: str = "http://localhost:5173"
+    jwt_secret: str = "development-only-change-me"
+    jwt_algorithm: str = "HS256"
+    access_token_minutes: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
