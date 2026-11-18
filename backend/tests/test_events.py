@@ -20,3 +20,9 @@ def test_github_security_log_epoch_is_normalized() -> None:
 
     assert events[0].event_type == "repo.create"
     assert events[0].actor == "octocat"
+
+
+def test_github_audit_export_timestamp_and_ip_are_normalized() -> None:
+    events = parse_events(b'@timestamp,action,actor,actor_ip\n1794996496521,user.audit_log_export,octocat,203.0.113.10\n', "text/csv")
+
+    assert events[0].source_ip == "203.0.113.10"
