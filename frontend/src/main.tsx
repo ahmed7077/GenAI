@@ -291,7 +291,7 @@ function Chart({ events }: { events: Evt[] }) {
           <div className="bars">
             {data.map(([name, value], i) => (
               <div className="bar-row" key={name}>
-                <span>{name}</span>
+                <span title={name}>{name}</span>
                 <div>
                   <i
                     style={{

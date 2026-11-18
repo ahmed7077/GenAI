@@ -881,11 +881,16 @@ p {
 }
 .bar-row {
   display: grid;
-  grid-template-columns: 150px 1fr 32px;
+  grid-template-columns: minmax(160px, 190px) 1fr 32px;
   gap: 12px;
   align-items: center;
   font: 11px "DM Mono";
   color: #d2c4aa;
+}
+.bar-row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .bar-row > div {
   height: 8px;
