@@ -36,4 +36,5 @@
 - [x] Validated the rebuilt Compose stack, health endpoint, authenticated model status, and mounted artifact metadata (400,000 sampled training records and 78 features).
 - [x] Added a bounded 30-second AI-provider timeout so unavailable model requests return a clear API error instead of leaving the investigation interface waiting indefinitely.
 - [x] Redesigned the SOC workspace with an earthy visual system, hover-reveal navigation, in-rail sign-out, responsive layouts, motion, evidence-derived event distribution chart, and a threaded investigation conversation interface.
+- [x] Corrected event retrieval so the dashboard reflects the full persisted upload (up to 2,000 records) instead of incorrectly presenting its former 100-record API page as the total.
 
