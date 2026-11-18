@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -6,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.ai import GeminiProvider
 from app.api.auth import get_current_user, get_session
 from app.models import SecurityEvent, User
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -22,7 +25,15 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
         for event in events
     ) or "No stored events are available."
     try:
-        answer = GeminiProvider().generate(payload.question, evidence)
+        answer = await asyncio.wait_for(
+            asyncio.to_thread(GeminiProvider().generate, payload.question, evidence),
+            timeout=get_settings().ai_timeout_seconds,
+        )
+    except TimeoutError as error:
+        raise HTTPException(
+            status_code=504,
+            detail="The AI provider did not respond within 30 seconds. Try again or check the configured model.",
+        ) from error
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except Exception as error:

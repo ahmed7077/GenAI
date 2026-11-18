@@ -34,4 +34,5 @@
 - [x] Mounted locally trained CICIDS2017 artifacts read-only into the API and added authenticated model-status and complete-flow inference endpoints.
 - [x] Kept model applicability explicit: CICIDS2017 network-flow models are not applied to GitHub audit or host-authentication records, which continue through their schema-aware parser and correlation detector.
 - [x] Validated the rebuilt Compose stack, health endpoint, authenticated model status, and mounted artifact metadata (400,000 sampled training records and 78 features).
+- [x] Added a bounded 30-second AI-provider timeout so unavailable model requests return a clear API error instead of leaving the investigation interface waiting indefinitely.
 
