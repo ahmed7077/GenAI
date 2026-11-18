@@ -18,12 +18,12 @@ class IncidentCreate(BaseModel):
     evidence: dict[str, object]
 
 
-@router.get("")
+@router.get("", response_model=None)
 async def list_incidents(user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> list[Incident]:
     return list(session.scalars(select(Incident).order_by(Incident.created_at.desc())).all())
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=None)
 async def create_incident(payload: IncidentCreate, user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> Incident:
     incident = Incident(**payload.model_dump(), created_by=user.id)
     session.add(incident)
@@ -34,7 +34,7 @@ async def create_incident(payload: IncidentCreate, user: User = Depends(get_curr
     return incident
 
 
-@router.patch("/{incident_id}/status")
+@router.patch("/{incident_id}/status", response_model=None)
 async def update_status(incident_id: UUID, status_value: IncidentStatus, user: User = Depends(get_current_user), session: Session = Depends(get_session)) -> Incident:
     incident = session.get(Incident, incident_id)
     if incident is None:
