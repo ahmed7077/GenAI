@@ -15,6 +15,13 @@
 - [x] Validation completed: backend lint, three unit tests, and `alembic upgrade head` pass against the local SQLite development configuration.
 - [ ] Commit, push, and verify this feature.
 
+## Phase 3 — Event ingestion
+
+- [x] Added a safe JSON/CSV parser with 10 MiB upload cap, UTF-8 decoding, IP validation, timestamp normalization, and preserved raw evidence.
+- [x] Added a persistent security-event model and parser unit tests.
+- [x] Validation completed: backend lint and five unit tests pass. Packaging discovery now explicitly includes only the API package.
+- [ ] Commit, push, and verify this feature.
+
 ## External dependencies
 
 - A Gemini API key is optional until AI-provider integration is implemented.
