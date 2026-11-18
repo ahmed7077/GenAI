@@ -70,10 +70,16 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
             f"{guidance} This fallback does not infer an incident."
         )
     primary_model = provider.models()[0]
+    attempted = "; ".join(failures)
     model_note = (
-        f"System note: {primary_model} was unavailable ({failures[0]}). Switched to {selected_model}."
-        if selected_model != primary_model
-        else f"System note: response generated with {selected_model}."
+        f"System note: response generated with {selected_model} after fallback. {attempted}"
+        if selected_model not in {primary_model, "local-rag-fallback"}
+        else (
+            f"System note: all configured Gemini models were unavailable ({attempted}). "
+            "Switched to local-rag-fallback."
+            if selected_model == "local-rag-fallback"
+            else f"System note: response generated with {selected_model}."
+        )
     )
     citations = "\n".join(f"- {source['title']}: {source['url']}" for source in sources)
     answer = f"{model_note}\n\n{answer}\n\nRetrieved guidance:\n{citations}"
