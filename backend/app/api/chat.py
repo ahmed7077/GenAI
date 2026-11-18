@@ -50,11 +50,24 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
     if not answer:
         selected_model = "local-rag-fallback"
         event_types = sorted({event.event_type for event in events})
+        question = payload.question.lower()
+        if "review" in question or "first" in question:
+            guidance = (
+                "Start with workflow-permission changes, merge-setting changes, and OAuth access changes; "
+                "compare their actor, repository, approval, and change-ticket context before escalating."
+            )
+        elif question.strip() in {"hi", "hello", "hey"}:
+            guidance = "Ask about a specific event type, a time window, or what should be reviewed first."
+        else:
+            guidance = (
+                "The local fallback can summarize stored event types and retrieve relevant defensive guidance, "
+                "but it cannot make unsupported conclusions while Gemini is unavailable."
+            )
         answer = (
             "Gemini capacity is unavailable, so ThreatLens switched to its local retrieval fallback. "
             f"It reviewed {len(events)} recent stored event summaries. "
             f"Observed event types include: {', '.join(event_types[:8]) or 'none'}. "
-            "This fallback does not infer an incident; use the retrieved guidance and preserved evidence for review."
+            f"{guidance} This fallback does not infer an incident."
         )
     primary_model = provider.models()[0]
     model_note = (
