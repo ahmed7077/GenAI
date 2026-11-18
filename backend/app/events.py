@@ -53,7 +53,7 @@ def normalize_event(payload: dict[str, Any]) -> NormalizedEvent:
     )
 
 
-def parse_events(content: bytes, content_type: str) -> list[NormalizedEvent]:
+def parse_events(content: bytes, content_type: str, filename: str = "") -> list[NormalizedEvent]:
     if len(content) > 10 * 1024 * 1024:
         raise ValueError("Upload exceeds 10 MiB limit")
     text = content.decode("utf-8")
@@ -64,9 +64,66 @@ def parse_events(content: bytes, content_type: str) -> list[NormalizedEvent]:
         records = list(csv.DictReader(io.StringIO(text)))
     elif "sshd" in text and ("Failed password" in text or "Accepted " in text):
         return parse_openssh_auth_log(text)
+    elif content_type in {"text/plain", "application/octet-stream"} or filename.lower().endswith((".log", ".txt")):
+        return parse_generic_log(text, filename)
     else:
         raise ValueError("Upload a JSON/CSV event export or an OpenSSH authentication log.")
     return [normalize_event(record) for record in records]
+
+
+ISO_TIMESTAMP = re.compile(r"(?P<stamp>\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?)")
+DOTTED_TIMESTAMP = re.compile(r"(?P<stamp>\d{4}\.\d{2}\.\d{2}[ -]\d{2}:\d{2}:\d{2})")
+APACHE_TIMESTAMP = re.compile(r"\[(?P<stamp>\d{2}/[A-Za-z]{3}/\d{4}:\d{2}:\d{2}:\d{2}\s+[+-]\d{4})\]")
+ANDROID_TIMESTAMP = re.compile(r"^(?P<stamp>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)")
+SYSLOG_TIMESTAMP = re.compile(r"^(?P<stamp>[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(?P<host>\S+)")
+
+
+def parse_generic_log(text: str, filename: str) -> list[NormalizedEvent]:
+    """Preserve timestamped lines from common LogHub-style text logs as evidence."""
+    current_year = datetime.now(UTC).year
+    category = re.sub(r"[^a-z0-9]+", "-", filename.lower().rsplit(".", 1)[0]).strip("-") or "raw"
+    events: list[NormalizedEvent] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        value = line.strip()
+        if not value:
+            continue
+        syslog = SYSLOG_TIMESTAMP.search(value)
+        iso = ISO_TIMESTAMP.search(value)
+        dotted = DOTTED_TIMESTAMP.search(value)
+        apache = APACHE_TIMESTAMP.search(value)
+        android = ANDROID_TIMESTAMP.search(value)
+        host = syslog["host"] if syslog else None
+        try:
+            if iso:
+                occurred_at = datetime.fromisoformat(iso["stamp"].replace("Z", "+00:00").replace(",", "."))
+            elif apache:
+                occurred_at = datetime.strptime(apache["stamp"], "%d/%b/%Y:%H:%M:%S %z")
+            elif dotted:
+                occurred_at = datetime.strptime(dotted["stamp"], "%Y.%m.%d %H:%M:%S")
+            elif android:
+                occurred_at = datetime.strptime(android["stamp"], "%m-%d %H:%M:%S.%f" if "." in android["stamp"] else "%m-%d %H:%M:%S").replace(year=current_year)
+            elif syslog:
+                occurred_at = datetime.strptime(syslog["stamp"], "%b %d %H:%M:%S").replace(year=current_year)
+            else:
+                continue
+        except ValueError:
+            continue
+        if occurred_at.tzinfo is None:
+            occurred_at = occurred_at.replace(tzinfo=UTC)
+        lowered = value.lower()
+        outcome = "failure" if any(token in lowered for token in (" error", " failed", "fatal", "exception")) else "success" if any(token in lowered for token in (" success", "accepted", "completed")) else "observed"
+        events.append(
+            NormalizedEvent(
+                event_type=f"log.{category}.event",
+                occurred_at=occurred_at,
+                host=host,
+                outcome=outcome,
+                raw_event={"raw_line": line, "line_number": line_number, "parser": "generic-timestamped-log"},
+            )
+        )
+    if not events:
+        raise ValueError("No supported timestamped records were found in this raw log.")
+    return events
 
 
 SSH_LINE = re.compile(
