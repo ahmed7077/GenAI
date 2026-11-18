@@ -401,6 +401,9 @@ main {
   transform: rotate(135deg) !important;
 }
 .donut { display: flex !important; }
+.model-help { margin: 10px 0 14px; font-size: 13px; }
+.sample-picker { display: inline-block; margin-bottom: 12px; background: #426b62; color: #f3ead9; }
+.sample-name { display: block; margin: -4px 0 12px; color: #8ed3dc; }
 .bubble a {
   color: #8ed3dc;
   text-decoration: underline;

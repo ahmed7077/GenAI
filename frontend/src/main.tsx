@@ -612,6 +612,29 @@ function Models({
   const [payload, setPayload] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
+  const [loadingSample, setLoadingSample] = useState(false);
+  const [sampleName, setSampleName] = useState("");
+  async function loadSample(file: File) {
+    setLoadingSample(true);
+    setError("");
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const r = await fetch(`${API}/models/flow-sample`, {
+        method: "POST",
+        headers,
+        body: form,
+      });
+      if (!r.ok) throw Error(await fail(r));
+      const data = await r.json();
+      setPayload(JSON.stringify(data.features, null, 2));
+      setSampleName(`${data.filename} · ${data.feature_count} features loaded`);
+    } catch (x) {
+      setError(x instanceof Error ? x.message : "Could not load flow sample.");
+    } finally {
+      setLoadingSample(false);
+    }
+  }
   async function predict(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -666,6 +689,23 @@ function Models({
         <article className="model-form">
           <small>LIVE FLOW INFERENCE</small>
           <h2>Score a flow</h2>
+          <p className="model-help">
+            Select a CICIDS2017 MachineLearningCVE CSV. ThreatLens loads its first row and checks all 78 model features.
+          </p>
+          <label className="button sample-picker">
+            {loadingSample ? "Reading CSV…" : "Select CICIDS CSV row"}
+            <input
+              hidden
+              type="file"
+              accept=".csv,text/csv"
+              disabled={loadingSample || !model?.available}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void loadSample(file);
+              }}
+            />
+          </label>
+          {sampleName && <small className="sample-name">{sampleName}</small>}
           <form onSubmit={predict}>
             <textarea
               value={payload}
