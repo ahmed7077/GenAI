@@ -217,7 +217,7 @@ function Upload({
       <input
         hidden
         type="file"
-        accept=".json,.csv"
+        accept=".json,.csv,.log,text/plain"
         disabled={uploading}
         onChange={(e) => {
           const f = e.target.files?.[0];

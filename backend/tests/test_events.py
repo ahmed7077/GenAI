@@ -26,3 +26,15 @@ def test_github_audit_export_timestamp_and_ip_are_normalized() -> None:
     events = parse_events(b'@timestamp,action,actor,actor_ip\n1794996496521,user.audit_log_export,octocat,203.0.113.10\n', "text/csv")
 
     assert events[0].source_ip == "203.0.113.10"
+
+
+def test_openssh_auth_log_is_normalized() -> None:
+    events = parse_events(
+        b"Jan 10 10:00:00 web-01 sshd[12]: Failed password for admin from 203.0.113.10 port 22 ssh2\n"
+        b"Jan 10 10:03:00 web-01 sshd[15]: Accepted password for admin from 203.0.113.10 port 22 ssh2\n",
+        "text/plain",
+    )
+
+    assert [event.event_type for event in events] == ["login.failed", "login.success"]
+    assert events[0].source_ip == "203.0.113.10"
+    assert events[1].host == "web-01"

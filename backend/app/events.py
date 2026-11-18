@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import re
 from datetime import UTC, datetime
 from ipaddress import ip_address
 from typing import Any
@@ -61,6 +62,50 @@ def parse_events(content: bytes, content_type: str) -> list[NormalizedEvent]:
         records = payload if isinstance(payload, list) else [payload]
     elif content_type in {"text/csv", "application/csv"}:
         records = list(csv.DictReader(io.StringIO(text)))
+    elif "sshd" in text and ("Failed password" in text or "Accepted " in text):
+        return parse_openssh_auth_log(text)
     else:
-        raise ValueError("Only JSON and CSV event uploads are supported")
+        raise ValueError("Upload a JSON/CSV event export or an OpenSSH authentication log.")
     return [normalize_event(record) for record in records]
+
+
+SSH_LINE = re.compile(
+    r"^(?P<stamp>[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+"
+    r"(?P<host>\S+)\s+sshd(?:\[\d+\])?:\s+(?P<message>.+)$"
+)
+SSH_SOURCE = re.compile(r"\bfrom\s+(?P<ip>[0-9a-fA-F:.]+)")
+SSH_ACCOUNT = re.compile(r"\bfor(?:\s+invalid\s+user)?\s+(?P<account>[^\s]+)")
+
+
+def parse_openssh_auth_log(text: str) -> list[NormalizedEvent]:
+    """Normalize conventional OpenSSH auth.log lines without fabricating fields."""
+    current_year = datetime.now(UTC).year
+    events: list[NormalizedEvent] = []
+    for line in text.splitlines():
+        match = SSH_LINE.match(line.strip())
+        if not match:
+            continue
+        message = match["message"]
+        if "Failed password" in message or "Invalid user" in message:
+            event_type, outcome = "login.failed", "failure"
+        elif "Accepted password" in message or "Accepted publickey" in message:
+            event_type, outcome = "login.success", "success"
+        else:
+            continue
+        source = SSH_SOURCE.search(message)
+        account = SSH_ACCOUNT.search(message)
+        occurred_at = datetime.strptime(match["stamp"], "%b %d %H:%M:%S").replace(year=current_year, tzinfo=UTC)
+        events.append(
+            NormalizedEvent(
+                event_type=event_type,
+                occurred_at=occurred_at,
+                source_ip=source["ip"] if source else None,
+                host=match["host"],
+                actor=account["account"] if account else None,
+                outcome=outcome,
+                raw_event={"raw_line": line, "timestamp_year_inferred": current_year},
+            )
+        )
+    if not events:
+        raise ValueError("No supported OpenSSH failed or accepted login events were found.")
+    return events
