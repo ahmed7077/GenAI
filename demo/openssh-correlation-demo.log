@@ -1,0 +1,6 @@
+# ThreatLens demonstration fixture — not production evidence.
+# 203.0.113.42 is reserved TEST-NET-3 documentation address space (RFC 5737).
+Nov 18 09:15:01 demo-web-01 sshd[2101]: Failed password for analyst from 203.0.113.42 port 43001 ssh2
+Nov 18 09:15:14 demo-web-01 sshd[2108]: Failed password for analyst from 203.0.113.42 port 43008 ssh2
+Nov 18 09:15:27 demo-web-01 sshd[2116]: Failed password for analyst from 203.0.113.42 port 43016 ssh2
+Nov 18 09:16:03 demo-web-01 sshd[2124]: Accepted password for analyst from 203.0.113.42 port 43024 ssh2
