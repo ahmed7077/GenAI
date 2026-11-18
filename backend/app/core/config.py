@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     access_token_minutes: int = 30
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.5-flash"
-    ai_timeout_seconds: int = 30
+    gemini_fallback_models: str = "gemini-3.5-flash-lite,gemini-3.8-flash,gemini-flash-latest"
+    ai_model_timeout_seconds: int = 6
     model_dir: str = "models"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

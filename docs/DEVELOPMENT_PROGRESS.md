@@ -38,4 +38,5 @@
 - [x] Redesigned the SOC workspace with an earthy visual system, hover-reveal navigation, in-rail sign-out, responsive layouts, motion, evidence-derived event distribution chart, and a threaded investigation conversation interface.
 - [x] Corrected event retrieval so the dashboard reflects the full persisted upload (up to 2,000 records) instead of incorrectly presenting its former 100-record API page as the total.
 - [x] Added local cybersecurity RAG retrieval with curated NIST and MITRE sources, query-time relevance scoring, returned citation metadata, and retrieval unit coverage.
+- [x] Added bounded Gemini model failover and a clearly labelled local RAG fallback so investigation responses remain available during provider capacity failures.
 

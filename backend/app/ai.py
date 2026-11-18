@@ -6,7 +6,12 @@ from app.core.config import get_settings
 class GeminiProvider:
     """Minimal safe Gemini adapter; callers must pass evidence, never untrusted instructions."""
 
-    def generate(self, question: str, evidence: str) -> str:
+    def models(self) -> list[str]:
+        settings = get_settings()
+        configured = [settings.gemini_model, *settings.gemini_fallback_models.split(",")]
+        return list(dict.fromkeys(model.strip() for model in configured if model.strip()))
+
+    def generate(self, model: str, question: str, evidence: str) -> str:
         settings = get_settings()
         if not settings.gemini_api_key:
             raise RuntimeError("GEMINI_API_KEY is not configured")
@@ -20,5 +25,5 @@ class GeminiProvider:
             "backslash characters.\n"
             f"Question: {question}\nEvidence: {evidence}"
         )
-        response = client.models.generate_content(model=settings.gemini_model, contents=prompt)
+        response = client.models.generate_content(model=model, contents=prompt)
         return response.text or "No response generated."

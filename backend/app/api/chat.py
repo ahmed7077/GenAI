@@ -29,25 +29,39 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
     source_context = "\n".join(
         f"[{source['id']}] {source['title']}: {source['excerpt']} ({source['url']})" for source in sources
     )
-    try:
-        answer = await asyncio.wait_for(
-            asyncio.to_thread(GeminiProvider().generate, payload.question, f"{evidence}\n\nTrusted RAG sources:\n{source_context}"),
-            timeout=get_settings().ai_timeout_seconds,
+    provider = GeminiProvider()
+    failures: list[str] = []
+    answer = ""
+    selected_model = ""
+    for model in provider.models():
+        try:
+            answer = await asyncio.wait_for(
+                asyncio.to_thread(provider.generate, model, payload.question, f"{evidence}\n\nTrusted RAG sources:\n{source_context}"),
+                timeout=get_settings().ai_model_timeout_seconds,
+            )
+            selected_model = model
+            break
+        except TimeoutError:
+            failures.append(f"{model} timed out")
+        except RuntimeError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        except Exception as error:
+            failures.append(f"{model} failed (HTTP {getattr(error, 'code', 'unknown')})")
+    if not answer:
+        selected_model = "local-rag-fallback"
+        event_types = sorted({event.event_type for event in events})
+        answer = (
+            "Gemini capacity is unavailable, so ThreatLens switched to its local retrieval fallback. "
+            f"It reviewed {len(events)} recent stored event summaries. "
+            f"Observed event types include: {', '.join(event_types[:8]) or 'none'}. "
+            "This fallback does not infer an incident; use the retrieved guidance and preserved evidence for review."
         )
-    except TimeoutError as error:
-        raise HTTPException(
-            status_code=504,
-            detail="The AI provider did not respond within 30 seconds. Try again or check the configured model.",
-        ) from error
-    except RuntimeError as error:
-        raise HTTPException(status_code=503, detail=str(error)) from error
-    except Exception as error:
-        if getattr(error, "code", None) == 503:
-            raise HTTPException(
-                status_code=503,
-                detail="Gemini is temporarily unavailable because of provider demand. Please retry in a moment.",
-            ) from error
-        raise HTTPException(status_code=502, detail="AI provider request failed; no answer was generated.") from error
+    primary_model = provider.models()[0]
+    model_note = (
+        f"System note: {primary_model} was unavailable ({failures[0]}). Switched to {selected_model}."
+        if selected_model != primary_model
+        else f"System note: response generated with {selected_model}."
+    )
     citations = "\n".join(f"- {source['title']}: {source['url']}" for source in sources)
-    answer = f"{answer}\n\nRetrieved guidance:\n{citations}"
-    return {"answer": answer, "evidence_count": len(events), "sources": sources}
+    answer = f"{model_note}\n\n{answer}\n\nRetrieved guidance:\n{citations}"
+    return {"answer": answer, "evidence_count": len(events), "sources": sources, "model": selected_model}
