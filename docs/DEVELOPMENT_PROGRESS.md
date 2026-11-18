@@ -28,3 +28,10 @@
 - CICIDS2017 raw data is not bundled. Later phases will use synthetic test fixtures and document full-data acquisition.
 - `npm audit` could not reach the npm audit endpoint in this execution environment; no clean audit result is claimed.
 
+## Phase 4 — Interactive workflows and applied ML
+
+- [x] Replaced visual-only navigation with separate dashboard, evidence explorer, authentication detection, model intelligence, and evidence-bounded investigation views.
+- [x] Mounted locally trained CICIDS2017 artifacts read-only into the API and added authenticated model-status and complete-flow inference endpoints.
+- [x] Kept model applicability explicit: CICIDS2017 network-flow models are not applied to GitHub audit or host-authentication records, which continue through their schema-aware parser and correlation detector.
+- [x] Validated the rebuilt Compose stack, health endpoint, authenticated model status, and mounted artifact metadata (400,000 sampled training records and 78 features).
+

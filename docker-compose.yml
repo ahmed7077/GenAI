@@ -19,6 +19,9 @@ services:
         required: false
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://threatlens:threatlens@db:5432/threatlens}
+      MODEL_DIR: /models
+    volumes:
+      - ./models:/models:ro
     depends_on:
       db:
         condition: service_healthy

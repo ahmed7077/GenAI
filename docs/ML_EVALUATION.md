@@ -20,3 +20,9 @@ The Isolation Forest baseline performs poorly on this task and must not be promo
 ## Artifacts
 
 The local run created `models/random_forest.joblib`, `models/isolation_forest.joblib`, and `models/metrics.json`. They are deliberately excluded from Git along with the raw dataset.
+
+## Runtime integration
+
+Docker Compose mounts the local `models/` directory read-only into the API. Authenticated users can inspect `/api/v1/models/status` and send a complete, numeric 78-feature CICIDS2017 flow vector to `/api/v1/models/predict`. The endpoint returns the Random Forest attack probability and Isolation Forest anomaly signal.
+
+The model must not be used for GitHub audit, authentication, or arbitrary security-log records: those do not share the trained feature schema. ThreatLens evaluates those records using normalized evidence and its separate authentication-correlation rule.
