@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/models", tags=["models"])
 class FlowPredictionRequest(BaseModel):
     """A CICIDS2017 numeric flow record keyed by its original feature names."""
 
-    features: dict[str, float] = Field(min_length=1)
+    features: dict[str, float | None] = Field(min_length=1)
 
 
 def _artifact_path(name: str) -> Path:
@@ -69,7 +70,7 @@ async def predict_flow(
             status_code=422,
             detail={"message": "A complete CICIDS2017 flow vector is required.", "missing_features": missing},
         )
-    frame = pd.DataFrame([[payload.features[column] for column in columns]], columns=columns)
+    frame = pd.DataFrame([[payload.features[column] for column in columns]], columns=columns).apply(pd.to_numeric, errors="coerce")
     forest_values = forest_artifact["imputer"].transform(frame)
     isolation_values = isolation_artifact["imputer"].transform(frame)
     probability = float(forest_artifact["model"].predict_proba(forest_values)[0][1])
@@ -94,14 +95,36 @@ async def load_flow_sample(
         # UploadFile is spooled to disk by FastAPI. Read only one row instead of
         # buffering a multi-hundred-megabyte CICIDS file into application memory.
         await file.seek(0)
-        row = pd.read_csv(file.file, nrows=1)
+        chunks = pd.read_csv(file.file, chunksize=50_000)
     except (UnicodeDecodeError, pd.errors.ParserError) as error:
         raise HTTPException(status_code=422, detail="Could not read this CSV file.") from error
     try:
         columns = _load_artifact("random_forest.joblib")["columns"]
     except FileNotFoundError as error:
         raise HTTPException(status_code=503, detail="CICIDS2017 artifacts are not mounted.") from error
-    normalized = {str(name).strip(): value for name, value in row.iloc[0].items()}
+    first_row = None
+    selected_row = None
+    selected_label = None
+    selected_index = 0
+    offset = 0
+    for chunk in chunks:
+        chunk.columns = [str(name).strip() for name in chunk.columns]
+        if first_row is None:
+            first_row = chunk.iloc[0]
+        label_column = next((name for name in chunk.columns if name.lower() == "label"), None)
+        if label_column:
+            labels = chunk[label_column].astype(str).str.strip()
+            attacks = chunk[labels.str.upper() != "BENIGN"]
+            if not attacks.empty:
+                selected_row = attacks.iloc[0]
+                selected_label = str(selected_row[label_column]).strip()
+                selected_index = offset + int(np.flatnonzero((labels.str.upper() != "BENIGN").to_numpy())[0]) + 1
+                break
+        offset += len(chunk)
+    row = selected_row if selected_row is not None else first_row
+    if row is None:
+        raise HTTPException(status_code=422, detail="The selected CSV has no flow records.")
+    normalized = {str(name).strip(): value for name, value in row.items()}
     missing = [column for column in columns if column not in normalized]
     if missing:
         raise HTTPException(
@@ -109,7 +132,17 @@ async def load_flow_sample(
             detail={"message": "This is not a complete CICIDS2017 flow CSV.", "missing_features": missing},
         )
     try:
-        features = {column: float(normalized[column]) for column in columns}
+        features = {
+            column: float(value) if np.isfinite(float(value)) else None
+            for column, value in ((column, normalized[column]) for column in columns)
+        }
     except (TypeError, ValueError) as error:
         raise HTTPException(status_code=422, detail="The selected flow contains non-numeric values.") from error
-    return {"features": features, "feature_count": len(features), "filename": file.filename}
+    return {
+        "features": features,
+        "feature_count": len(features),
+        "filename": file.filename,
+        "source_label": selected_label,
+        "source_row": selected_index,
+        "selection": "first non-BENIGN labelled row" if selected_label else "first row (no label column)",
+    }

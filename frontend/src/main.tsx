@@ -628,7 +628,9 @@ function Models({
       if (!r.ok) throw Error(await fail(r));
       const data = await r.json();
       setPayload(JSON.stringify(data.features, null, 2));
-      setSampleName(`${data.filename} · ${data.feature_count} features loaded`);
+      setSampleName(
+        `${data.filename} · row ${data.source_row} · ${data.feature_count} features loaded${data.source_label ? ` · dataset label: ${data.source_label}` : ""}`,
+      );
       setResult("");
     } catch (x) {
       setError(x instanceof Error ? x.message : "Could not load flow sample.");
