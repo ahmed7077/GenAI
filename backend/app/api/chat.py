@@ -14,7 +14,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 class ChatRequest(BaseModel):
-    question: str = Field(min_length=3, max_length=2000)
+    question: str = Field(min_length=1, max_length=2000)
 
 
 @router.post("")
@@ -37,5 +37,10 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except Exception as error:
+        if getattr(error, "code", None) == 503:
+            raise HTTPException(
+                status_code=503,
+                detail="Gemini is temporarily unavailable because of provider demand. Please retry in a moment.",
+            ) from error
         raise HTTPException(status_code=502, detail="AI provider request failed; no answer was generated.") from error
     return {"answer": answer, "evidence_count": str(len(events))}
