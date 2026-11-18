@@ -629,6 +629,7 @@ function Models({
       const data = await r.json();
       setPayload(JSON.stringify(data.features, null, 2));
       setSampleName(`${data.filename} · ${data.feature_count} features loaded`);
+      setResult("");
     } catch (x) {
       setError(x instanceof Error ? x.message : "Could not load flow sample.");
     } finally {
@@ -701,7 +702,11 @@ function Models({
               disabled={loadingSample || !model?.available}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void loadSample(file);
+                if (file) {
+                  void loadSample(file);
+                  // Allow selecting the same file again after changing its row/content.
+                  e.currentTarget.value = "";
+                }
               }}
             />
           </label>
