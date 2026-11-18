@@ -27,7 +27,7 @@ async def upload_events(
     file: UploadFile = File(...), user: User = Depends(get_current_user), session: Session = Depends(get_session)
 ) -> dict[str, int]:
     try:
-        records = parse_events(await file.read(), file.content_type or "")
+        records = parse_events(await file.read(), file.content_type or "", file.filename or "")
     except (UnicodeDecodeError, ValueError) as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
     for record in records:

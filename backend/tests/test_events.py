@@ -11,7 +11,7 @@ def test_json_events_are_normalized_with_original_evidence() -> None:
 
 
 def test_event_parser_rejects_unsupported_content() -> None:
-    with pytest.raises(ValueError, match="Only JSON"):
+    with pytest.raises(ValueError, match="No supported timestamped"):
         parse_events(b"not an event", "text/plain")
 
 
@@ -38,3 +38,14 @@ def test_openssh_auth_log_is_normalized() -> None:
     assert [event.event_type for event in events] == ["login.failed", "login.success"]
     assert events[0].source_ip == "203.0.113.10"
     assert events[1].host == "web-01"
+
+
+def test_generic_timestamped_log_is_preserved() -> None:
+    events = parse_events(
+        b"2024-04-01 10:22:11 ERROR request failed\n2024-04-01 10:22:12 completed request\n",
+        "text/plain",
+        "Apache.log",
+    )
+
+    assert [event.outcome for event in events] == ["failure", "success"]
+    assert events[0].event_type == "log.apache.event"
