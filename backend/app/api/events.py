@@ -1,8 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user, get_session
@@ -20,6 +20,43 @@ class EventResponse(BaseModel):
     host: str | None
     actor: str | None
     outcome: str | None
+
+
+class EventPage(BaseModel):
+    items: list[EventResponse]
+    total: int
+    page: int
+    categories: list[str]
+
+
+@router.get("/page")
+def event_page(
+    page: int = Query(1, ge=1),
+    query: str = Query("", max_length=255),
+    category: str = Query("", max_length=120),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> EventPage:
+    filters = []
+    if category:
+        filters.append(or_(SecurityEvent.event_type == category, SecurityEvent.event_type.startswith(category + ".", autoescape=True)))
+    if query.strip():
+        filters.append(or_(*(func.lower(column).contains(query.strip().lower(), autoescape=True) for column in (
+            SecurityEvent.event_type, SecurityEvent.actor, SecurityEvent.source_ip, SecurityEvent.host, SecurityEvent.outcome,
+        ))))
+    total = session.scalar(select(func.count()).select_from(SecurityEvent).where(*filters)) or 0
+    page = min(page, max(1, (total + 49) // 50))
+    records = session.scalars(
+        select(SecurityEvent).where(*filters)
+        .order_by(SecurityEvent.occurred_at.desc(), SecurityEvent.id.desc())
+        .offset((page - 1) * 50).limit(50)
+    )
+    types = session.scalars(select(SecurityEvent.event_type).distinct())
+    return EventPage(
+        items=[EventResponse(id=row.id, event_type=row.event_type, occurred_at=row.occurred_at.isoformat(),
+                             source_ip=row.source_ip, host=row.host, actor=row.actor, outcome=row.outcome) for row in records],
+        total=total, page=page, categories=sorted({value.split(".", 1)[0] for value in types}),
+    )
 
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)

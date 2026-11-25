@@ -43,7 +43,7 @@
 - [x] Corrected event retrieval so the dashboard reflects the database-backed stored-evidence total rather than a client retrieval window; interactive views now load up to 10,000 recent records while retaining the true total separately.
 - [x] Added local cybersecurity RAG retrieval with curated NIST and MITRE sources, query-time relevance scoring, returned citation metadata, and retrieval unit coverage.
 - [x] Added bounded Gemini model failover and a clearly labelled local RAG fallback so investigation responses remain available during provider capacity failures.
-- [x] Reworked the evidence vault to paginate the complete retained inventory in 50-record pages, filter by event family, and surface the event actor when the source export supplies one.
+- [x] Evidence Vault search and event-family filtering query the complete database inventory and return 50 records per page with stable ordering.
 - [x] Replaced the opaque percentage donut with a readable event-family bar chart; removed the duplicate live-evidence badge.
 - [x] Added an explicitly non-incident GitHub/OAuth control-change review queue alongside the existing authentication-correlation detector, and made returned assistant citations clickable.
 

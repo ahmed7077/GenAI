@@ -64,6 +64,7 @@ function App() {
   const [error, setError] = useState("");
   const [sessionNotice, setSessionNotice] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [evidenceRevision, setEvidenceRevision] = useState(0);
   const headers: Record<string, string> = DEMO ? {} : { Authorization: `Bearer ${token}` };
   const fail = async (r: Response) => {
     const x = await r.json().catch(() => ({}));
@@ -115,6 +116,7 @@ function App() {
         body: form,
       });
       if (!r.ok) throw Error(await fail(r));
+      setEvidenceRevision((revision) => revision + 1);
       await refresh();
       setTab("events");
     } catch (x) {
@@ -193,7 +195,7 @@ function App() {
           />
         )}{" "}
         {tab === "events" && (
-          <Events events={events} eventTotal={eventTotal} uploading={uploading} upload={upload} />
+          <Events token={token} revision={evidenceRevision} eventTotal={eventTotal} uploading={uploading} upload={upload} />
         )}{" "}
         {tab === "detections" && (
           <Detections
@@ -405,12 +407,14 @@ function Dashboard({
   );
 }
 function Events({
-  events,
+  token,
+  revision,
   eventTotal,
   uploading,
   upload,
 }: {
-  events: Evt[];
+  token: string;
+  revision: number;
   eventTotal: number;
   uploading: boolean;
   upload: (f: File) => Promise<void>;
@@ -418,23 +422,35 @@ function Events({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(1);
-  const categories = useMemo(
-    () =>
-      [
-        ...new Set(events.map((e) => e.event_type.split(".")[0] || "other")),
-      ].sort(),
-    [events],
-  );
-  const filtered = events.filter(
-    (e) =>
-      (category === "all" || e.event_type.startsWith(category + ".")) &&
-      `${e.event_type} ${e.actor ?? ""} ${e.source_ip ?? ""} ${e.host ?? ""} ${e.outcome ?? ""}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
-  );
-  const pages = Math.max(1, Math.ceil(filtered.length / 50));
-  const safePage = Math.min(page, pages);
-  const visible = filtered.slice((safePage - 1) * 50, safePage * 50);
+  const [result, setResult] = useState<{ items: Evt[]; total: number; page: number; categories: string[] }>();
+  const [pageError, setPageError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setPageError("");
+    const timer = window.setTimeout(async () => {
+      const params = new URLSearchParams({ page: String(page), query, category: category === "all" ? "" : category });
+      try {
+        const response = await fetch(`${API}/events/page?${params}`, {
+          signal: controller.signal,
+          headers: DEMO ? {} : { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw Error(`Evidence request failed (HTTP ${response.status}).`);
+        const data = await response.json();
+        if (!controller.signal.aborted) setResult(data);
+      } catch (error) {
+        if (!controller.signal.aborted) setPageError(error instanceof Error ? error.message : "Unable to load evidence.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 200);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [page, query, category, token, revision]);
+  const categories = result?.categories ?? [];
+  const pages = Math.max(1, Math.ceil((result?.total ?? 0) / 50));
+  const safePage = result?.page ?? 1;
+  const visible = result?.items ?? [];
   const firstPage = Math.min(Math.max(1, safePage - 3), Math.max(1, pages - 6));
   const change = () => setPage(1);
   return (
@@ -454,10 +470,10 @@ function Events({
             <h2>Persisted evidence</h2>
           </div>
           <span>
-            Page {safePage} of {pages} · {filtered.length} matching · {eventTotal.toLocaleString()} stored
+            Page {safePage} of {pages} · {result?.total ?? 0} matching · {eventTotal.toLocaleString()} stored
           </span>
         </div>
-        {events.length && (
+        {eventTotal > 0 && (
           <div className="event-controls">
             <input
               value={query}
@@ -483,7 +499,7 @@ function Events({
             </select>
           </div>
         )}
-        {events.length ? (
+        {pageError ? <p role="alert">{pageError}</p> : loading ? <p role="status">Loading evidence…</p> : eventTotal > 0 ? (
           <table>
             <thead>
               <tr>
