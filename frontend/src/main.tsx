@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -661,6 +661,7 @@ function Models({
   fail: (r: Response) => Promise<string>;
 }) {
   const [payload, setPayload] = useState("");
+  const csvPicker = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [loadingSample, setLoadingSample] = useState(false);
@@ -775,11 +776,20 @@ function Models({
           <small>LIVE FLOW INFERENCE</small>
           <h2>Score a flow</h2>
           <p className="model-help">
-            Select a CICIDS2017 MachineLearningCVE CSV. ThreatLens loads its first row and checks all 78 model features.
+            Choose a CICIDS2017 MachineLearningCVE CSV to load a sample, select a row, or score the entire file.
           </p>
-          <label className="button sample-picker">
-            {loadingSample ? "Reading CSV…" : "Select CICIDS CSV row"}
+          <div className="workspace-actions">
+            <button className="button sample-picker" type="button"
+              disabled={loadingSample || batchBusy || !model?.available}
+              onClick={() => csvPicker.current?.click()}>
+              {loadingSample ? "Reading CSV…" : selectedFile ? "Change CICIDS CSV" : "Choose CICIDS CSV"}
+            </button>
+            <button className="button batch-score" type="button" disabled={!selectedFile || loadingSample || batchBusy} onClick={scoreBatch}>
+              {batchBusy ? "Scoring full CSV…" : "Score entire CSV"}
+            </button>
+          </div>
             <input
+              ref={csvPicker}
               hidden
               type="file"
               accept=".csv,text/csv"
@@ -793,12 +803,8 @@ function Models({
                 }
               }}
             />
-          </label>
           {sampleName && <small className="sample-name">{sampleName}</small>}
           {selectedFile && <div className="row-picker"><input type="number" min="1" value={sampleRow} onChange={e => setSampleRow(e.target.value)} placeholder="Row number"/><button className="button" type="button" disabled={!sampleRow || loadingSample} onClick={() => void loadSample(selectedFile, sampleRow)}>Load row</button></div>}
-          <button className="button batch-score" type="button" disabled={!selectedFile || batchBusy} onClick={scoreBatch}>
-            {batchBusy ? "Scoring full CSV…" : "Score entire selected CSV"}
-          </button>
           <p className="model-help">Batch scoring analyzes every compatible flow in the selected file and surfaces aggregate rates plus the ten highest-risk rows.</p>
           <form onSubmit={predict}>
             <textarea
@@ -808,8 +814,8 @@ function Models({
                 '{" Destination Port":80," Flow Duration":12345,...}'
               }
             />
-            <button className="button gold" disabled={!model?.available}>
-              Run model
+            <button className="button gold" disabled={!model?.available || loadingSample || !payload.trim()}>
+              Score this row
             </button>
           </form>
           {error && <p className="error">{error}</p>}
@@ -893,8 +899,8 @@ function Cases({ authorization }: { authorization?: string }) {
     finally { setBusy(false); }
   }
   return (
-    <section className="table-panel">
-      <h2>Analyst cases</h2>
+    <section className="table-panel case-panel">
+      <h2>Case workspace</h2>
       {error && <p className="error" role="alert">{error}</p>}
       <form className="event-controls" onSubmit={(event) => {
         event.preventDefault();
@@ -906,7 +912,7 @@ function Cases({ authorization }: { authorization?: string }) {
         });
       }}>
         <input aria-label="Case title" placeholder="New case title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={255} />
-        <button className="button" disabled={busy || title.trim().length < 3}>Create case</button>
+        <button className="button gold" disabled={busy || title.trim().length < 3}>Create case</button>
       </form>
       <label>Case <select value={selected} disabled={busy} onChange={(event) => { setSelected(event.target.value); setNote(""); }}>
         <option value="">Select a case</option>
@@ -914,7 +920,8 @@ function Cases({ authorization }: { authorization?: string }) {
       </select></label>
       {active && <>
         <h3>{active.title}</h3>
-        <button className="button" disabled={busy} onClick={() => void perform(async () => {
+        <div className="workspace-actions">
+        <button className="button case-export" disabled={busy} onClick={() => void perform(async () => {
           setTimeline(await request<CaseEntry[]>(`/${active.id}/timeline`));
           requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
         })}>Print / Save as PDF</button>
@@ -928,6 +935,7 @@ function Cases({ authorization }: { authorization?: string }) {
         }}>
           <option value="open">Open</option><option value="under_review">Under review</option><option value="resolved">Resolved</option>
         </select></label>
+        </div>
         <form className="event-controls" onSubmit={(event) => {
           event.preventDefault();
           void perform(async () => {
@@ -937,7 +945,7 @@ function Cases({ authorization }: { authorization?: string }) {
           });
         }}>
           <input aria-label="Review note" placeholder="Add a review note" value={note} maxLength={4000} onChange={(event) => setNote(event.target.value)} />
-          <button className="button" disabled={busy || !note.trim()}>Add note</button>
+          <button className="button gold" disabled={busy || !note.trim()}>Add note</button>
         </form>
         <h3>Audit timeline</h3>
         <ul>{timeline.map((entry) => <li key={entry.id}>{new Date(entry.created_at).toLocaleString()} · {entry.action}{entry.detail && ` · ${entry.detail}`}</li>)}</ul>

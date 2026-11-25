@@ -1368,3 +1368,49 @@ tbody tr:hover {
     white-space: pre-wrap;
   }
 }
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.case-panel label {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.case-panel select {
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid #58746b;
+  border-radius: 0.65rem;
+  color: #ebe4d6;
+  background: #21312c;
+  color-scheme: dark;
+  font: inherit;
+}
+
+.case-panel .case-export {
+  color: #e1f2ee;
+  background: #334e48;
+}
+
+.case-panel .button:disabled,
+.model-form .button:disabled {
+  color: #c5ccc4;
+  background: #383f39;
+  cursor: not-allowed;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.case-panel :is(button, select):focus-visible,
+.model-form button:focus-visible {
+  outline: 2px solid #a2d9c8;
+  outline-offset: 3px;
+}

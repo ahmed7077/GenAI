@@ -18,6 +18,13 @@ test("opens the live model and evidence tabs", async ({ page }) => {
   await expect(page.getByText(/Page 1 of/)).toBeVisible();
   await openTab(page, "Model intelligence");
   await expect(page.getByRole("heading", { name: "Model intelligence" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Score entire CSV" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Score this row" })).toBeDisabled();
+  await openTab(page, "Analyst cases");
+  const create = page.getByRole("button", { name: "Create case" });
+  await expect(create).toBeDisabled();
+  await page.getByRole("textbox", { name: "Case title" }).fill("SSH review");
+  await expect(create).toBeEnabled();
 });
 
 test("submits checklist mode and displays the assistant response", async ({ page }) => {
