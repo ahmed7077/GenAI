@@ -27,6 +27,9 @@ test("opens the live model and evidence tabs", async ({ page }) => {
   const create = page.getByRole("button", { name: "Create case" });
   await expect(create).toBeDisabled();
   await page.getByRole("textbox", { name: "Case title" }).fill("SSH review");
+  const severity = page.getByRole("combobox", { name: /^Severity/ });
+  await severity.selectOption("critical");
+  await expect(severity).toHaveValue("critical");
   await expect(create).toBeEnabled();
 });
 

@@ -1478,3 +1478,15 @@ tbody tr:hover {
 @media (max-width: 1100px) {
   .activity-distribution { grid-template-columns: minmax(0, 1fr); }
 }
+.case-severity {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.case-severity--low { color: #a5d6c5; }
+.case-severity--medium { color: #a8c9e0; }
+.case-severity--high { color: #e8b58a; }
+.case-severity--critical { color: #f2a6a6; }

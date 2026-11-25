@@ -861,6 +861,8 @@ function Cases({ authorization }: { authorization?: string }) {
   const [selected, setSelected] = useState("");
   const [timeline, setTimeline] = useState<CaseEntry[]>([]);
   const [title, setTitle] = useState("");
+  const [severity, setSeverity] = useState("low");
+  const severityLevels = ["low", "medium", "high", "critical"];
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -903,21 +905,25 @@ function Cases({ authorization }: { authorization?: string }) {
       <form className="event-controls" onSubmit={(event) => {
         event.preventDefault();
         void perform(async () => {
-          const item = await request<AnalystCase>("", "POST", { title: title.trim(), severity: "low", confidence: 0, evidence: {} });
+          const item = await request<AnalystCase>("", "POST", { title: title.trim(), severity, confidence: 0, evidence: {} });
           setCases((items) => [item, ...items]);
           setSelected(item.id);
           setTitle("");
         });
       }}>
         <input aria-label="Case title" placeholder="New case title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={255} />
+        <label>Severity <select value={severity} disabled={busy} onChange={(event) => setSeverity(event.target.value)}>
+          {severityLevels.map((level) => <option key={level} value={level}>{level[0].toUpperCase() + level.slice(1)}</option>)}
+        </select></label>
         <button className="button gold" disabled={busy || title.trim().length < 3}>Create case</button>
       </form>
       <label>Case <select value={selected} disabled={busy} onChange={(event) => { setSelected(event.target.value); setNote(""); }}>
         <option value="">Select a case</option>
-        {cases.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+        {cases.map((item) => <option key={item.id} value={item.id}>{item.title} · {item.severity}</option>)}
       </select></label>
       {active && <>
         <h3>{active.title}</h3>
+        <p>Analyst-assigned severity: <strong className={`case-severity case-severity--${active.severity}`}>{active.severity}</strong></p>
         <div className="workspace-actions">
         <button className="button case-export" disabled={busy} onClick={() => void perform(async () => {
           setTimeline(await request<CaseEntry[]>(`/${active.id}/timeline`));
