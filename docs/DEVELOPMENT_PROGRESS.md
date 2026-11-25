@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Added production configuration checks. Provision analyst accounts before switching to production, then set `THREATLENS_ENVIRONMENT=production`, `THREATLENS_DEMO_MODE=false`, a strong `JWT_SECRET`, PostgreSQL `DATABASE_URL`, and explicit HTTPS `CORS_ORIGINS`. Public registration is disabled in production. This profile expects a separately configured TLS reverse proxy.
+
 - [x] Orchestrated investigation chat with five LangGraph stages for triage, evidence collection, correlation, reference retrieval, and response synthesis. Gemini is used in synthesis; the preceding stages use bounded retrieval and rules.
 
 - [x] Expanded curated RAG guidance with GitHub security logs, token expiration and revocation, and CISA cloud logging references.

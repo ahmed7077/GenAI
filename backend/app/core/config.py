@@ -1,9 +1,13 @@
 from functools import lru_cache
+from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    threatlens_environment: Literal["development", "production"] = "development"
+    threatlens_demo_mode: bool = False
     app_name: str = "ThreatLens API"
     api_v1_prefix: str = "/api/v1"
     database_url: str = "sqlite:///./threatlens.db"
@@ -18,6 +22,20 @@ class Settings(BaseSettings):
     model_dir: str = "models"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def validate_production(self) -> "Settings":
+        if self.threatlens_environment != "production":
+            return self
+        if self.threatlens_demo_mode:
+            raise ValueError("Production requires THREATLENS_DEMO_MODE=false")
+        if len(self.jwt_secret) < 32 or self.jwt_secret == "development-only-change-me":
+            raise ValueError("Production requires a JWT secret of at least 32 characters")
+        if not self.database_url.startswith(("postgresql://", "postgresql+psycopg://")):
+            raise ValueError("Production requires PostgreSQL")
+        if any(not origin.strip().startswith("https://") for origin in self.cors_origins.split(",")):
+            raise ValueError("Production requires explicit HTTPS CORS origins")
+        return self
 
 
 @lru_cache

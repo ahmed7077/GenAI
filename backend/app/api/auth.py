@@ -1,5 +1,4 @@
 from collections.abc import Generator
-from os import getenv
 from secrets import token_urlsafe
 
 import jwt
@@ -11,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
+from app.core.config import get_settings
 from app.models import AuditRecord, User, UserRole
 from app.security import create_access_token, decode_access_token, hash_password, verify_password
 
@@ -48,7 +48,7 @@ def get_current_user(
     session: Session = Depends(get_session),
 ) -> User:
     if credentials is None:
-        if getenv("THREATLENS_DEMO_MODE") == "true":
+        if get_settings().threatlens_demo_mode:
             query = select(User).where(User.email == DEMO_EMAIL)
             demo = session.scalar(query)
             if demo is None:
@@ -88,6 +88,10 @@ def require_role(*roles: UserRole):
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest, session: Session = Depends(get_session)) -> TokenResponse:
+    if get_settings().threatlens_environment == "production":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Public registration is disabled")
+    if payload.role != UserRole.ANALYST:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Public registration creates analyst accounts only")
     email = payload.email.strip().lower()
     if email == DEMO_EMAIL:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is reserved")
