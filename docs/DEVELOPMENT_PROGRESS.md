@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Added the Analyst Cases tab for creating cases, setting review status, adding notes, and viewing the audit timeline.
+
 - [x] Added incident review notes and an audit timeline API. Case edits require an analyst or administrator role.
 
 - [x] Added incident-brief and review-checklist modes to the Investigation Assistant, with evidence references in the local fallback.

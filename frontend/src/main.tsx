@@ -41,9 +41,10 @@ type Model = {
   purpose: string;
   limitation: string;
 };
-type Tab = "dashboard" | "events" | "detections" | "models" | "assistant";
+type Tab = "dashboard" | "events" | "detections" | "models" | "assistant" | "cases";
 type Message = { role: "user" | "assistant"; text: string; time: string };
 const navigation: Array<[Tab, string, string]> = [
+  ["cases", "Analyst cases", "□"],
   ["dashboard", "Overview", "◈"],
   ["events", "Evidence vault", "◌"],
   ["detections", "Detection center", "⌁"],
@@ -208,6 +209,7 @@ function App() {
           <Models model={model} headers={headers} fail={fail} />
         )}{" "}
         {tab === "assistant" && <Assistant headers={headers} fail={fail} />}
+        {tab === "cases" && <Cases authorization={headers.Authorization} />}
       </main>
     </div>
   );
@@ -841,6 +843,100 @@ function LinkedText({ text }: { text: string }) {
     </>
   );
 }
+type CaseStatus = "open" | "under_review" | "resolved";
+type AnalystCase = { id: string; title: string; severity: string; status: CaseStatus; evidence: Record<string, unknown> };
+type CaseEntry = { id: string; action: string; detail: string; created_at: string };
+
+function Cases({ authorization }: { authorization?: string }) {
+  const [cases, setCases] = useState<AnalystCase[]>([]);
+  const [selected, setSelected] = useState("");
+  const [timeline, setTimeline] = useState<CaseEntry[]>([]);
+  const [title, setTitle] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const active = cases.find((item) => item.id === selected);
+  async function request<T>(path = "", method = "GET", body?: object): Promise<T> {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (authorization) headers.Authorization = authorization;
+    const response = await fetch(`${API}/incidents${path}`, { method, headers, body: body && JSON.stringify(body) });
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      throw Error(typeof result?.detail === "string" ? result.detail : `Case request failed (HTTP ${response.status}).`);
+    }
+    return response.json();
+  }
+  useEffect(() => {
+    let current = true;
+    request<AnalystCase[]>().then((items) => { if (current) setCases(items); })
+      .catch((failure: Error) => { if (current) setError(failure.message); });
+    return () => { current = false; };
+  }, [authorization]);
+  useEffect(() => {
+    if (!selected) return;
+    let current = true;
+    setTimeline([]);
+    request<CaseEntry[]>(`/${selected}/timeline`).then((entries) => { if (current) setTimeline(entries); })
+      .catch((failure: Error) => { if (current) setError(failure.message); });
+    return () => { current = false; };
+  }, [selected, authorization]);
+  async function perform(action: () => Promise<void>) {
+    setBusy(true);
+    setError("");
+    try { await action(); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : "Case request failed."); }
+    finally { setBusy(false); }
+  }
+  return (
+    <section className="table-panel">
+      <h2>Analyst cases</h2>
+      {error && <p className="error" role="alert">{error}</p>}
+      <form className="event-controls" onSubmit={(event) => {
+        event.preventDefault();
+        void perform(async () => {
+          const item = await request<AnalystCase>("", "POST", { title: title.trim(), severity: "low", confidence: 0, evidence: {} });
+          setCases((items) => [item, ...items]);
+          setSelected(item.id);
+          setTitle("");
+        });
+      }}>
+        <input aria-label="Case title" placeholder="New case title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={255} />
+        <button className="button" disabled={busy || title.trim().length < 3}>Create case</button>
+      </form>
+      <label>Case <select value={selected} disabled={busy} onChange={(event) => { setSelected(event.target.value); setNote(""); }}>
+        <option value="">Select a case</option>
+        {cases.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+      </select></label>
+      {active && <>
+        <h3>{active.title}</h3>
+        <label>Status <select value={active.status} disabled={busy} onChange={(event) => {
+          const status = event.target.value;
+          void perform(async () => {
+            const updated = await request<AnalystCase>(`/${active.id}/status?status_value=${status}`, "PATCH");
+            setCases((items) => items.map((item) => item.id === updated.id ? updated : item));
+            setTimeline(await request<CaseEntry[]>(`/${active.id}/timeline`));
+          });
+        }}>
+          <option value="open">Open</option><option value="under_review">Under review</option><option value="resolved">Resolved</option>
+        </select></label>
+        <form className="event-controls" onSubmit={(event) => {
+          event.preventDefault();
+          void perform(async () => {
+            await request(`/${active.id}/notes`, "POST", { text: note });
+            setNote("");
+            setTimeline(await request<CaseEntry[]>(`/${active.id}/timeline`));
+          });
+        }}>
+          <input aria-label="Review note" placeholder="Add a review note" value={note} maxLength={4000} onChange={(event) => setNote(event.target.value)} />
+          <button className="button" disabled={busy || !note.trim()}>Add note</button>
+        </form>
+        <h3>Audit timeline</h3>
+        <ul>{timeline.map((entry) => <li key={entry.id}>{new Date(entry.created_at).toLocaleString()} · {entry.action}{entry.detail && ` · ${entry.detail}`}</li>)}</ul>
+      </>}
+    </section>
+  );
+}
+
 function Assistant({
   headers,
   fail,
