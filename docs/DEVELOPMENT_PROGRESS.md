@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Authentication correlation now requires prior failures within 15 minutes of a success from the same source and exposes the matching event IDs for review.
+
 - [x] Added a print layout for analyst case reports with case metadata, attached evidence, and the latest audit timeline. Use the browser’s Save as PDF destination.
 
 - [x] Added the Analyst Cases tab for creating cases, setting review status, adding notes, and viewing the audit timeline.

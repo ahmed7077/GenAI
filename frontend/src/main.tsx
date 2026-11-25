@@ -16,8 +16,8 @@ type Evt = {
 type Cand = {
   source_ip: string;
   failed_logins: number;
-  privilege_escalation: boolean;
-  sensitive_access: boolean;
+  failure_event_ids: string[];
+  success_event_id: string;
 };
 type ReviewSignal = {
   event_id: string;
@@ -261,6 +261,11 @@ function Candidate({ c }: { c: Cand }) {
       <div>
         <b>{c.source_ip}</b>
         <span>{c.failed_logins} failed logins before success</span>
+        {c.success_event_id && <details>
+          <summary>Evidence IDs</summary>
+          <p>Failures: {c.failure_event_ids.join(", ")}</p>
+          <p>Success: {c.success_event_id}</p>
+        </details>}
       </div>
       <small>Review</small>
     </div>
