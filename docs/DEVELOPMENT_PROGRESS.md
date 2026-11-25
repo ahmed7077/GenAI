@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Return analysts to sign-in with an explanation when the API rejects the saved workspace session.
+
 - [x] Replaced visual-only navigation with separate dashboard, evidence explorer, authentication detection, model intelligence, and evidence-bounded investigation views.
 - [x] Mounted locally trained CICIDS2017 artifacts read-only into the API and added authenticated model-status and complete-flow inference endpoints.
 - [x] Kept model applicability explicit: CICIDS2017 network-flow models are not applied to GitHub audit or host-authentication records, which continue through their schema-aware parser and correlation detector.

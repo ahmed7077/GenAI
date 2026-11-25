@@ -61,6 +61,7 @@ function App() {
   const [evaluation, setEvaluation] = useState<Eval | null>(null);
   const [model, setModel] = useState<Model | null>(null);
   const [error, setError] = useState("");
+  const [sessionNotice, setSessionNotice] = useState("");
   const [uploading, setUploading] = useState(false);
   const headers = { Authorization: `Bearer ${token}` };
   const fail = async (r: Response) => {
@@ -76,6 +77,18 @@ function App() {
         fetch(`${API}/models/status`, { headers }),
         fetch(`${API}/events/summary`, { headers }),
       ]);
+      if ([a, b, c, d].some((response) => response.status === 401)) {
+        if (localStorage.getItem("threatlens_token") !== token) return;
+        localStorage.removeItem("threatlens_token");
+        setEvents([]);
+        setEventTotal(0);
+        setEvaluation(null);
+        setModel(null);
+        setSessionNotice("Your session is no longer valid. Sign in again to open your workspace.");
+        setToken("");
+        return;
+      }
+      if (localStorage.getItem("threatlens_token") !== token) return;
       if (!a.ok || !b.ok || !c.ok || !d.ok)
         throw Error("Unable to load the live workspace.");
       setEvents(await a.json());
@@ -111,12 +124,17 @@ function App() {
   }
   if (!token)
     return (
-      <Login
-        onToken={(v) => {
-          localStorage.setItem("threatlens_token", v);
-          setToken(v);
-        }}
-      />
+      <>
+        {sessionNotice && <p className="error" role="status">{sessionNotice}</p>}
+        <Login
+          onToken={(v) => {
+            setSessionNotice("");
+            setError("");
+            localStorage.setItem("threatlens_token", v);
+            setToken(v);
+          }}
+        />
+      </>
     );
   const candidates = evaluation?.incident_candidates ?? [];
   const signals = evaluation?.review_signals ?? [];
