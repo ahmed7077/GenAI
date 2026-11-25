@@ -13,6 +13,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("opens the live model and evidence tabs", async ({ page }) => {
+  await expect(page.getByText("Events charted")).toBeVisible({ timeout: 15_000 });
+  const distribution = page.getByRole("list", { name: "Event distribution" });
+  await expect(distribution.getByRole("listitem").first()).toContainText("%");
   await openTab(page, "Evidence vault");
   await expect(page.getByRole("heading", { name: "Persisted evidence" })).toBeVisible();
   await expect(page.getByText(/Page 1 of/)).toBeVisible();

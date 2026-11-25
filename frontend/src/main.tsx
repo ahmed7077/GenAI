@@ -285,10 +285,15 @@ function Chart({ events }: { events: Evt[] }) {
         .slice(0, 5),
     [events],
   );
-  const max = Math.max(...data.map(([, v]) => v), 1);
-  const leader = data[0];
-  const share =
-    leader && events.length ? Math.round((leader[1] / events.length) * 100) : 0;
+  const other = events.length - data.reduce((sum, [, count]) => sum + count, 0);
+  const palette = ["#75b9a2", "#80abc9", "#d59073", "#b6c18d", "#ba98bd", "#919d98"];
+  let offset = 0;
+  const segments = [...data, ...(other ? [["Other", other] as const] : [])].map(([name, count], index) => {
+    const share = count / events.length * 100;
+    const start = offset;
+    offset += share;
+    return { name, count, share, start, color: palette[index] };
+  });
   return (
     <article className="chart">
       <div className="section-title">
@@ -296,47 +301,34 @@ function Chart({ events }: { events: Evt[] }) {
           <small>EVIDENCE DISTRIBUTION</small>
           <h2>Observed activity</h2>
         </div>
-        <span>Top event families</span>
+        <span>Top 5 event types + other</span>
       </div>
       {data.length ? (
-        <>
-          <div className="donut">
-            <svg
-              viewBox="0 0 42 42"
-              aria-label={`${leader[0]} represents ${share}% of retained events`}
-            >
-              <circle className="donut-base" cx="21" cy="21" r="15.9" />
-              <circle
-                className="donut-value"
-                cx="21"
-                cy="21"
-                r="15.9"
-                strokeDasharray={`${share} ${100 - share}`}
-                transform="rotate(-90 21 21)"
-              />
+        <div className="activity-distribution">
+          <div className="activity-ring">
+            <svg viewBox="0 0 160 160" aria-hidden="true">
+              {segments.map(({ name, share, start, color }) => (
+                <circle key={name} cx="80" cy="80" r="65" fill="none" stroke={color}
+                  strokeWidth="22" pathLength="100" strokeDasharray={`${share} ${100 - share}`}
+                  strokeDashoffset={-start} transform="rotate(-90 80 80)" />
+              ))}
             </svg>
-            <div>
-              <b>{share}%</b>
-              <small>{leader[0]} of all events</small>
+            <div className="activity-ring-total">
+              <b>{events.length.toLocaleString()}</b>
+              <span>Events charted</span>
             </div>
           </div>
-          <div className="bars">
-            {data.map(([name, value], i) => (
-              <div className="bar-row" key={name}>
-                <span title={name}>{name}</span>
-                <div>
-                  <i
-                    style={{
-                      width: `${(value / max) * 100}%`,
-                      animationDelay: `${i * 90}ms`,
-                    }}
-                  />
-                </div>
-                <b>{value}</b>
-              </div>
+          <ul className="activity-legend" aria-label="Event distribution">
+            {segments.map(({ name, count, share, color }) => (
+              <li key={name}>
+                <i aria-hidden="true" style={{ background: color }} />
+                <span>{name}</span>
+                <b>{count.toLocaleString()}</b>
+                <span>{share < 0.05 ? "<0.1" : share.toFixed(1)}%</span>
+              </li>
             ))}
-          </div>
-        </>
+          </ul>
+        </div>
       ) : (
         <p>Import evidence to generate an observed-activity chart.</p>
       )}
