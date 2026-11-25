@@ -909,6 +909,10 @@ function Cases({ authorization }: { authorization?: string }) {
       </select></label>
       {active && <>
         <h3>{active.title}</h3>
+        <button className="button" disabled={busy} onClick={() => void perform(async () => {
+          setTimeline(await request<CaseEntry[]>(`/${active.id}/timeline`));
+          requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+        })}>Print / Save as PDF</button>
         <label>Status <select value={active.status} disabled={busy} onChange={(event) => {
           const status = event.target.value;
           void perform(async () => {
@@ -932,6 +936,26 @@ function Cases({ authorization }: { authorization?: string }) {
         </form>
         <h3>Audit timeline</h3>
         <ul>{timeline.map((entry) => <li key={entry.id}>{new Date(entry.created_at).toLocaleString()} · {entry.action}{entry.detail && ` · ${entry.detail}`}</li>)}</ul>
+        <article className="case-print-report">
+          <p>ThreatLens · Analyst case report</p>
+          <h1>{active.title}</h1>
+          <dl>
+            <dt>Case ID</dt><dd>{active.id}</dd>
+            <dt>Status</dt><dd>{active.status.replaceAll("_", " ")}</dd>
+            <dt>Severity</dt><dd>{active.severity}</dd>
+          </dl>
+          <h2>Attached evidence</h2>
+          {Object.keys(active.evidence).length > 0
+            ? <pre>{JSON.stringify(active.evidence, null, 2)}</pre>
+            : <p>No evidence attached to this case.</p>}
+          <h2>Audit timeline</h2>
+          {timeline.length ? <ol>{timeline.map((entry) => (
+            <li key={entry.id}>
+              {new Date(entry.created_at).toLocaleString()} · {entry.action}
+              {entry.detail && <p>{entry.detail}</p>}
+            </li>
+          ))}</ol> : <p>No audit entries are available.</p>}
+        </article>
       </>}
     </section>
   );

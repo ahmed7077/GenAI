@@ -1335,3 +1335,36 @@ tbody tr:hover {
   border-color: #ffd1b7 !important;
   transform: rotate(135deg) !important;
 }
+.case-print-report {
+  display: none;
+}
+
+@media print {
+  body:has(.case-print-report) * {
+    visibility: hidden;
+  }
+
+  .case-print-report,
+  .case-print-report * {
+    visibility: visible !important;
+  }
+
+  .case-print-report {
+    display: block;
+    position: absolute;
+    inset: 0 0 auto;
+    padding: 1cm;
+    background: white;
+    color: black;
+    font: 11pt/1.5 system-ui, sans-serif;
+    overflow-wrap: anywhere;
+  }
+
+  .case-print-report :is(h1, h2, p, dt, dd, li, pre) {
+    color: inherit;
+  }
+
+  .case-print-report pre {
+    white-space: pre-wrap;
+  }
+}

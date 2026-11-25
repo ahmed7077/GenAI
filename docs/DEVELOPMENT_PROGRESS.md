@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Added a print layout for analyst case reports with case metadata, attached evidence, and the latest audit timeline. Use the browser’s Save as PDF destination.
+
 - [x] Added the Analyst Cases tab for creating cases, setting review status, adding notes, and viewing the audit timeline.
 
 - [x] Added incident review notes and an audit timeline API. Case edits require an analyst or administrator role.
