@@ -26,3 +26,9 @@ The local run created `models/random_forest.joblib`, `models/isolation_forest.jo
 Docker Compose mounts the local `models/` directory read-only into the API. Authenticated users can inspect `/api/v1/models/status` and send a complete, numeric 78-feature CICIDS2017 flow vector to `/api/v1/models/predict`. The endpoint returns the Random Forest attack probability and Isolation Forest anomaly signal.
 
 The model must not be used for GitHub audit, authentication, or arbitrary security-log records: those do not share the trained feature schema. ThreatLens evaluates those records using normalized evidence and its separate authentication-correlation rule.
+Future training runs fit the median imputer on the training partition and record
+evaluation size, training time, scikit-learn version, and model artifact SHA-256
+hashes in `metrics.json`. Existing artifacts predate this change. Their prior
+metrics are historical and should be refreshed by retraining into a separate
+output directory. The stratified row split measures held-out rows from this
+dataset. A separate capture or day split is needed to assess transfer.
