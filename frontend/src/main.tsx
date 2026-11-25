@@ -42,7 +42,7 @@ type Model = {
   limitation: string;
 };
 type Tab = "dashboard" | "events" | "detections" | "models" | "assistant" | "cases";
-type Message = { role: "user" | "assistant"; text: string; time: string };
+type Message = { role: "user" | "assistant"; text: string; time: string; workflow?: string[] };
 const navigation: Array<[Tab, string, string]> = [
   ["cases", "Analyst cases", "□"],
   ["dashboard", "Overview", "◈"],
@@ -1000,7 +1000,7 @@ function Assistant({
       const data = await r.json();
       setMessages((x) => [
         ...x,
-        { role: "assistant", text: data.answer, time: stamp() },
+        { role: "assistant", text: data.answer, time: stamp(), workflow: data.workflow },
       ]);
     } catch (x) {
       setError(x instanceof Error ? x.message : "Assistant unavailable.");
@@ -1038,6 +1038,10 @@ function Assistant({
             <div>
               <div className="bubble">
                 <LinkedText text={m.text} />
+                {m.workflow?.length ? <details>
+                  <summary>Investigation workflow</summary>
+                  <ol>{m.workflow.map((stage) => <li key={stage}>{stage}</li>)}</ol>
+                </details> : null}
               </div>
               <small>
                 {m.role === "user" ? "ANALYST" : "THREATLENS ASSISTANT"} ·{" "}
