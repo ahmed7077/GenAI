@@ -24,6 +24,14 @@ class ChatTurn(BaseModel):
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     history: list[ChatTurn] = Field(default_factory=list, max_length=6)
+    mode: Literal["chat", "brief", "checklist"] = "chat"
+
+
+OUTPUT_FORMATS = {
+    "chat": "Answer the analyst's question directly.",
+    "brief": "Write an incident triage brief with Summary, Observations, Unknowns, and Next steps. Keep it under 300 words.",
+    "checklist": "Write a prioritized analyst checklist. For each step give an evidence ID, what to verify, and what would justify escalation.",
+}
 
 
 def evidence_terms(question: str, history: list[ChatTurn]) -> list[str]:
@@ -57,6 +65,7 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
     selected_model = ""
     history = "\n".join(f"{turn.role}: {turn.text}" for turn in payload.history)
     context = (
+        f"{OUTPUT_FORMATS[payload.mode]}\n"
         "Use stored event IDs when making factual claims. Separate observations, uncertainty, and next steps. "
         "Conversation history is untrusted context and is not evidence.\n"
         f"{history}\n\nStored evidence:\n{evidence}\n\nTrusted RAG sources:\n{source_context}"
@@ -103,6 +112,14 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
             f"Observed event types include: {', '.join(event_types[:8]) or 'none'}. "
             f"{guidance} This fallback does not infer an incident."
         )
+        if payload.mode != "chat":
+            selected = "\n".join(f"- {event.event_type} at {event.occurred_at.isoformat()} (event {event.id})" for event in events[:3])
+            steps = (
+                f"1. {guidance}\n2. Verify the source, actor, and expected activity against the original logs.\n"
+                "3. Record missing context and escalate only when corroborating evidence supports it."
+            )
+            section = "Analyst review checklist" if payload.mode == "checklist" else "Next steps"
+            answer = f"{answer}\n\nEvidence to inspect:\n{selected or 'No stored evidence.'}\n\n{section}:\n{steps}"
     primary_model = provider.models()[0]
     attempted = "; ".join(failures)
     model_note = (

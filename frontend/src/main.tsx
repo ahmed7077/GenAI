@@ -852,9 +852,10 @@ function Assistant({
   const [q, setQ] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"chat" | "brief" | "checklist">("chat");
   async function ask(e: FormEvent) {
     e.preventDefault();
-    const question = q.trim();
+    const question = q.trim() || (mode === "chat" ? "" : "What should I review first?");
     if (!question || busy) return;
     setMessages((x) => [...x, { role: "user", text: question, time: stamp() }]);
     setQ("");
@@ -866,6 +867,7 @@ function Assistant({
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
+          mode,
           history: messages.slice(-6).map(({ role, text }) => ({ role, text: text.slice(0, 1500) })),
         }),
       });
@@ -932,14 +934,22 @@ function Assistant({
       </div>
       {error && <p className="error">{error}</p>}
       <form className="composer" onSubmit={ask}>
+        <select aria-label="Investigation output" value={mode} onChange={(e) => {
+          const value = e.target.value;
+          if (value === "chat" || value === "brief" || value === "checklist") setMode(value);
+        }} disabled={busy}>
+          <option value="chat">Ask a question</option>
+          <option value="brief">Draft incident brief</option>
+          <option value="checklist">Build review checklist</option>
+        </select>
         <textarea
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Ask about the evidence…"
-          required
+          required={mode === "chat"}
         />
         <button className="button gold" disabled={busy}>
-          Send <span>↗</span>
+          {mode === "chat" ? "Send" : "Generate"} <span>↗</span>
         </button>
       </form>
       <small className="chat-note">
