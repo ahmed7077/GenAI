@@ -17,6 +17,27 @@ class KnowledgeSource:
 
 SOURCES = (
     KnowledgeSource(
+        "github-security-log-events",
+        "GitHub Docs: Security log events",
+        "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/security-log-events",
+        "GitHub personal security log actions identify the event category and operation. "
+        "Use the action reference to interpret recorded actor, repository, timestamp, and OAuth activity where present.",
+    ),
+    KnowledgeSource(
+        "github-token-revocation",
+        "GitHub Docs: Token expiration and revocation",
+        "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/token-expiration-and-revocation",
+        "OAuth app tokens, GitHub App tokens, and personal access tokens can expire or be revoked. "
+        "The security log can record oauth_authorization.destroy when a token expires or is revoked.",
+    ),
+    KnowledgeSource(
+        "cisa-cloud-logging",
+        "CISA: Cloud Security Technical Reference Architecture",
+        "https://www.cisa.gov/sites/default/files/2023-02/cloud_security_technical_reference_architecture_2.pdf",
+        "Centralize cloud telemetry and normalize logs for analysis. Network flow records, API calls, and service "
+        "event logs provide different views of activity and should be interpreted in the context of their sources.",
+    ),
+    KnowledgeSource(
         "nist-sp-800-61r3",
         "NIST SP 800-61r3: Incident Response Recommendations",
         "https://csrc.nist.gov/pubs/sp/800/61/r3/final",

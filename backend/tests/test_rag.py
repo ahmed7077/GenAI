@@ -16,3 +16,7 @@ def test_unrelated_queries_do_not_return_reference_links() -> None:
 
 def test_source_identifier_is_searchable() -> None:
     assert retrieve("T1110", limit=1)[0]["id"] == "mitre-t1110"
+
+
+def test_token_revocation_retrieves_github_reference() -> None:
+    assert retrieve("GitHub OAuth token expiration revocation", limit=1)[0]["id"] == "github-token-revocation"
