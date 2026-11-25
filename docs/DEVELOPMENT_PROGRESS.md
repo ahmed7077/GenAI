@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Investigation chat sends up to six previous turns, ranks stored events by matching event type and recency, and returns evidence IDs alongside retrieved guidance. The local retrieval fallback adapts its review advice to the evidence selected.
+
 - [x] Local Docker Compose opens a shared demo dashboard without sign-in and binds published ports to loopback. Set `THREATLENS_DEMO_MODE=false` in `.env` and rebuild to restore sign-in.
 
 - [x] Return analysts to sign-in with an explanation when the API rejects the saved workspace session.

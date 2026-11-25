@@ -864,7 +864,10 @@ function Assistant({
       const r = await fetch(`${API}/chat`, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({
+          question,
+          history: messages.slice(-6).map(({ role, text }) => ({ role, text: text.slice(0, 1500) })),
+        }),
       });
       if (!r.ok) throw Error(await fail(r));
       const data = await r.json();
