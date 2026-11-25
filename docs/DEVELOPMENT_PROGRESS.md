@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Added `scripts/check-demo.ps1` to smoke-test the local demo web shell, evidence inventory, detection evidence trail, model status, and case list.
+
 - [x] Authentication correlation now requires prior failures within 15 minutes of a success from the same source and exposes the matching event IDs for review.
 
 - [x] Added a print layout for analyst case reports with case metadata, attached evidence, and the latest audit timeline. Use the browser’s Save as PDF destination.
