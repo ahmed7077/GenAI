@@ -1490,3 +1490,24 @@ tbody tr:hover {
 .case-severity--medium { color: #a8c9e0; }
 .case-severity--high { color: #e8b58a; }
 .case-severity--critical { color: #f2a6a6; }
+.model-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 25%);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.model-workspace > * { min-width: 0; }
+
+.model-workspace .model-form {
+  border-color: #649184;
+  box-shadow: 0 12px 42px #101e1b66, inset 0 1px #94c4b33b;
+}
+
+.model-workspace .model-applicability { padding: 1.25rem; }
+.model-applicability h3 { margin: 0.5rem 0; }
+.model-applicability p { margin-bottom: 0; font-size: 0.9rem; }
+
+@media (max-width: 900px) {
+  .model-workspace { grid-template-columns: minmax(0, 1fr); }
+}

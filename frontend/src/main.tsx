@@ -760,16 +760,7 @@ function Models({
           <Card label="ROC-AUC" value={m.roc_auc.toFixed(4)} />
         </section>
       )}
-      <section className="two">
-        <article className="signal">
-          <small>MODEL APPLICABILITY</small>
-          <h2>CICIDS2017 flows only</h2>
-          <p>
-            The Random Forest and Isolation Forest load from local artifacts and
-            require the complete numerical CICIDS2017 flow schema. Audit and
-            authentication records are evaluated by their dedicated rules.
-          </p>
-        </article>
+      <section className="model-workspace">
         <article className="model-form">
           <small>LIVE FLOW INFERENCE</small>
           <h2>Score a flow</h2>
@@ -828,6 +819,11 @@ function Models({
             </section>
           )}
         </article>
+        <aside className="signal model-applicability">
+          <small>MODEL APPLICABILITY</small>
+          <h3>CICIDS2017 flows only</h3>
+          <p>Random Forest and Isolation Forest require the CICIDS2017 numeric flow schema. Use Evidence Vault for audit and authentication logs.</p>
+        </aside>
       </section>
     </>
   );
