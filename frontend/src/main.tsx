@@ -147,7 +147,7 @@ function App() {
     <div className="app">
       <aside className="rail">
         <div className="brand">
-          <span>◇</span>
+          <img src="/favicon.svg" alt="" width={28} height={28} />
           <b>THREAT</b>
           <em>LENS</em>
         </div>
@@ -1119,7 +1119,7 @@ function Login({ onToken }: { onToken: (v: string) => void }) {
     <div className="login">
       <form onSubmit={submit}>
         <div className="brand">
-          <span>◇</span>
+          <img src="/favicon.svg" alt="" width={28} height={28} />
           <b>THREAT</b>
           <em>LENS</em>
         </div>
