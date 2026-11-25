@@ -45,14 +45,15 @@ SOURCES = (
 @lru_cache
 def _index() -> tuple[TfidfVectorizer, object]:
     vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
-    return vectorizer, vectorizer.fit_transform(source.text for source in SOURCES)
+    return vectorizer, vectorizer.fit_transform(f"{source.title} {source.text}" for source in SOURCES)
 
 
 def retrieve(query: str, limit: int = 3) -> list[dict[str, str | float]]:
     """Return relevant curated sources, never content supplied by an uploaded log."""
     vectorizer, matrix = _index()
     scores = cosine_similarity(vectorizer.transform([query]), matrix).ravel()
-    ranked = sorted(enumerate(scores), key=lambda item: item[1], reverse=True)[:limit]
+    matches = ((index, score) for index, score in enumerate(scores) if score > 0)
+    ranked = sorted(matches, key=lambda item: item[1], reverse=True)[:max(0, limit)]
     return [
         {
             "id": SOURCES[index].source_id,

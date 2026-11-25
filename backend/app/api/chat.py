@@ -55,7 +55,12 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
         f"event={event.id}; time={event.occurred_at.isoformat()}; type={event.event_type}; source={event.source_ip}; host={event.host}; outcome={event.outcome}"
         for event in events
     ) or "No stored events are available."
-    sources = retrieve(" ".join([payload.question, *[turn.text for turn in payload.history if turn.role == "user"]]))
+    sources = retrieve(payload.question)
+    if not sources and payload.question.strip().lower() not in {"hi", "hello", "hey"}:
+        previous_question = next(
+            (turn.text for turn in reversed(payload.history) if turn.role == "user"), ""
+        )
+        sources = retrieve(previous_question)
     source_context = "\n".join(
         f"[{source['id']}] {source['title']}: {source['excerpt']} ({source['url']})" for source in sources
     )
@@ -133,6 +138,8 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), ses
         )
     )
     citations = "\n".join(f"- {source['title']}: {source['url']}" for source in sources)
-    answer = f"{model_note}\n\n{answer}\n\nRetrieved guidance:\n{citations}"
+    answer = f"{model_note}\n\n{answer}"
+    if citations:
+        answer += f"\n\nRetrieved guidance:\n{citations}"
     return {"answer": answer, "evidence_count": len(events), "sources": sources, "model": selected_model,
             "evidence": [{"id": event.id, "event_type": event.event_type} for event in events]}

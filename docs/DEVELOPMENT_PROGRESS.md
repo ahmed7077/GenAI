@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] RAG searches source titles and text, suppresses zero-match citations, and uses the preceding analyst question for follow-ups when the current one has no matching sources.
+
 - [x] Added Playwright browser coverage for Evidence Vault and Model Intelligence navigation, plus checklist submission using a controlled assistant response. With the demo running, run `npx playwright test e2e/demo.spec.ts` from `frontend` after installing Chromium, or set `THREATLENS_BROWSER_CHANNEL=msedge` to use installed Edge.
 
 - [x] Added `scripts/check-demo.ps1` to smoke-test the local demo web shell, evidence inventory, detection evidence trail, model status, and case list.
