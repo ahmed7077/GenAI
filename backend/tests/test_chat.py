@@ -1,6 +1,6 @@
 import asyncio
 
-from app.api.chat import ChatRequest, ChatTurn, GeminiProvider, evidence_terms, investigation
+from app.api.chat import ChatRequest, ChatTurn, GeminiProvider, evidence_terms, investigation, triage
 
 
 def test_follow_up_retains_previous_user_event_type():
@@ -11,6 +11,15 @@ def test_follow_up_retains_previous_user_event_type():
     terms = evidence_terms("Which should I review?", history)
     assert "login.failed" in terms
     assert "oauth_access.regenerate" not in terms
+
+
+def test_timeline_filters_use_only_current_explicit_types():
+    payload = ChatRequest(
+        question="Show recent login.success events",
+        history=[ChatTurn(role="user", text="Review login.failed")],
+        mode="timeline",
+    )
+    assert triage({"payload": payload})["event_types"] == ["login.success"]
 
 
 def test_investigation_graph_executes_all_five_stages(monkeypatch):

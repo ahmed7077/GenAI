@@ -1,5 +1,6 @@
 import asyncio
 import re
+from itertools import zip_longest
 from typing import Literal, TypedDict
 
 from fastapi import APIRouter, Depends
@@ -46,6 +47,7 @@ class InvestigationState(TypedDict, total=False):
     payload: ChatRequest
     session: Session
     terms: list[str]
+    event_types: list[str]
     events: list[SecurityEvent]
     correlations: list[dict[str, object]]
     sources: list[dict[str, str | float]]
@@ -54,12 +56,28 @@ class InvestigationState(TypedDict, total=False):
 
 def triage(state: InvestigationState) -> dict:
     payload = state["payload"]
-    return {"terms": evidence_terms(payload.question, payload.history)}
+    explicit = re.findall(r"\b[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+", payload.question.lower())
+    return {
+        "terms": evidence_terms(payload.question, payload.history),
+        "event_types": list(dict.fromkeys(explicit))[:12] if payload.mode == "timeline" else [],
+    }
 
 
 async def collect_evidence(state: InvestigationState) -> dict:
     terms = state["terms"]
     statement = select(SecurityEvent)
+    order = (SecurityEvent.occurred_at.desc(), SecurityEvent.id.desc())
+    if state.get("event_types"):
+        # Reserve space for less frequent requested types before filling remaining slots.
+        groups = [
+            list(state["session"].scalars(
+                statement.where(func.lower(SecurityEvent.event_type) == event_type)
+                .order_by(*order).limit(25)
+            ))
+            for event_type in state["event_types"]
+        ]
+        events = [event for group in zip_longest(*groups) for event in group if event is not None]
+        return {"events": events[:25]}
     if terms:
         relevance = sum(
             case((func.lower(SecurityEvent.event_type).contains(term, autoescape=True), 1), else_=0)
@@ -67,7 +85,7 @@ async def collect_evidence(state: InvestigationState) -> dict:
         )
         statement = statement.order_by(relevance.desc())
     events = state["session"].scalars(
-        statement.order_by(SecurityEvent.occurred_at.desc(), SecurityEvent.id.desc()).limit(25)
+        statement.order_by(*order).limit(25)
     )
     return {"events": list(events)}
 
@@ -91,12 +109,17 @@ async def synthesize(state: InvestigationState) -> dict:
     payload, events, sources = state["payload"], state["events"], state["sources"]
     if payload.mode == "timeline":
         matches = state["correlations"]
+        counts = " · ".join(
+            f"{kind}: {sum(event.event_type.lower() == kind for event in events)} shown"
+            for kind in state.get("event_types", [])
+        )
+        summary = (
+            f"Timeline of {len(events)} retrieved events. "
+            f"The authentication rule matched {len(matches)} source(s) within this selection."
+            if events else "No stored events match this timeline request."
+        )
         return {"response": {
-            "answer": (
-                f"Timeline of {len(events)} retrieved events. "
-                f"The authentication rule matched {len(matches)} source(s) within this selection."
-                if events else "No stored events are available for this timeline."
-            ),
+            "answer": f"{summary}\n\n{counts}" if counts else summary,
             "model": "evidence-timeline",
             "evidence_count": len(events),
             "sources": sources,
