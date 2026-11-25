@@ -26,7 +26,7 @@ class ChatTurn(BaseModel):
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     history: list[ChatTurn] = Field(default_factory=list, max_length=6)
-    mode: Literal["chat", "brief", "checklist"] = "chat"
+    mode: Literal["chat", "brief", "checklist", "timeline"] = "chat"
 
 
 OUTPUT_FORMATS = {
@@ -89,6 +89,23 @@ def retrieve_guidance(state: InvestigationState) -> dict:
 
 async def synthesize(state: InvestigationState) -> dict:
     payload, events, sources = state["payload"], state["events"], state["sources"]
+    if payload.mode == "timeline":
+        matches = state["correlations"]
+        return {"response": {
+            "answer": (
+                f"Timeline of {len(events)} retrieved events. "
+                f"The authentication rule matched {len(matches)} source(s) within this selection."
+                if events else "No stored events are available for this timeline."
+            ),
+            "model": "evidence-timeline",
+            "evidence_count": len(events),
+            "sources": sources,
+            "timeline": [
+                {"id": event.id, "event_type": event.event_type,
+                 "occurred_at": event.occurred_at.isoformat(), "source_ip": event.source_ip}
+                for event in sorted(events, key=lambda item: item.occurred_at)
+            ],
+        }}
     evidence = "\n".join(
         f"event={event.id}; time={event.occurred_at.isoformat()}; type={event.event_type}; source={event.source_ip}; host={event.host}; outcome={event.outcome}"
         for event in events

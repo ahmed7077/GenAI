@@ -1511,3 +1511,32 @@ tbody tr:hover {
 @media (max-width: 900px) {
   .model-workspace { grid-template-columns: minmax(0, 1fr); }
 }
+.investigation-timeline {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0 0 0 1rem;
+  border-inline-start: 2px solid #76938a;
+}
+
+.investigation-timeline li {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  padding-block: 0.35rem 0.75rem;
+}
+
+.investigation-timeline li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -1.35rem;
+  top: 0.65rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #a5b9b2;
+}
+
+.investigation-timeline li[data-event-type="login.failed"]::before { background: #e59d84; }
+.investigation-timeline li[data-event-type="login.success"]::before { background: #a5d6aa; }
+.investigation-timeline time { color: #d1d9cd; }

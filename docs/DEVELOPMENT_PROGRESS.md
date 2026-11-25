@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Added an investigation timeline mode that visualizes retrieved events chronologically and links directly to their Evidence Vault records.
+
 - [x] Styled and spaced analyst case controls and clarified model file, batch, and single-row actions with keyboard-accessible controls.
 
 - [x] Added production configuration checks. Provision analyst accounts before switching to production, then set `THREATLENS_ENVIRONMENT=production`, `THREATLENS_DEMO_MODE=false`, a strong `JWT_SECRET`, PostgreSQL `DATABASE_URL`, and explicit HTTPS `CORS_ORIGINS`. Public registration is disabled in production. This profile expects a separately configured TLS reverse proxy.

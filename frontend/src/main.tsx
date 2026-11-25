@@ -42,7 +42,9 @@ type Model = {
   limitation: string;
 };
 type Tab = "dashboard" | "events" | "detections" | "models" | "assistant" | "cases";
-type Message = { role: "user" | "assistant"; text: string; time: string; workflow?: string[] };
+type TimelineEvent = Pick<Evt, "id" | "event_type" | "occurred_at" | "source_ip">;
+type Message = { role: "user" | "assistant"; text: string; time: string; workflow?: string[]; timeline?: TimelineEvent[] };
+const linkedEvidence = new URLSearchParams(location.search).get("event");
 const navigation: Array<[Tab, string, string]> = [
   ["dashboard", "Overview", "◈"],
   ["events", "Evidence vault", "◌"],
@@ -57,7 +59,7 @@ function App() {
   const [token, setToken] = useState(
     localStorage.getItem("threatlens_token") ?? "",
   );
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>(linkedEvidence ? "events" : "dashboard");
   const [events, setEvents] = useState<Evt[]>([]);
   const [eventTotal, setEventTotal] = useState(0);
   const [evaluation, setEvaluation] = useState<Eval | null>(null);
@@ -424,7 +426,7 @@ function Events({
   uploading: boolean;
   upload: (f: File) => Promise<void>;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(linkedEvidence ?? "");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<{ items: Evt[]; total: number; page: number; categories: string[] }>();
@@ -985,10 +987,10 @@ function Assistant({
   const [q, setQ] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"chat" | "brief" | "checklist">("chat");
+  const [mode, setMode] = useState<"chat" | "brief" | "checklist" | "timeline">("chat");
   async function ask(e: FormEvent) {
     e.preventDefault();
-    const question = q.trim() || (mode === "chat" ? "" : "What should I review first?");
+    const question = q.trim() || (mode === "chat" ? "" : mode === "timeline" ? "Show recent login.failed and login.success events" : "What should I review first?");
     if (!question || busy) return;
     setMessages((x) => [...x, { role: "user", text: question, time: stamp() }]);
     setQ("");
@@ -1008,7 +1010,7 @@ function Assistant({
       const data = await r.json();
       setMessages((x) => [
         ...x,
-        { role: "assistant", text: data.answer, time: stamp(), workflow: data.workflow },
+        { role: "assistant", text: data.answer, time: stamp(), workflow: data.workflow, timeline: data.timeline },
       ]);
     } catch (x) {
       setError(x instanceof Error ? x.message : "Assistant unavailable.");
@@ -1046,6 +1048,16 @@ function Assistant({
             <div>
               <div className="bubble">
                 <LinkedText text={m.text} />
+                {m.timeline?.length ? <ol className="investigation-timeline" aria-label="Investigation timeline">
+                  {m.timeline.map((event) => (
+                    <li key={event.id} data-event-type={event.event_type}>
+                      <time dateTime={event.occurred_at}>{new Date(event.occurred_at).toLocaleString()}</time>
+                      <strong>{event.event_type}</strong>
+                      {event.source_ip && <span>{event.source_ip}</span>}
+                      <a href={`?event=${encodeURIComponent(event.id)}`} target="_blank" rel="noreferrer">Open evidence {event.id.slice(0, 8)}</a>
+                    </li>
+                  ))}
+                </ol> : null}
                 {m.workflow?.length ? <details>
                   <summary>Investigation workflow</summary>
                   <ol>{m.workflow.map((stage) => <li key={stage}>{stage}</li>)}</ol>
@@ -1073,11 +1085,12 @@ function Assistant({
       <form className="composer" onSubmit={ask}>
         <select aria-label="Investigation output" value={mode} onChange={(e) => {
           const value = e.target.value;
-          if (value === "chat" || value === "brief" || value === "checklist") setMode(value);
+          if (value === "chat" || value === "brief" || value === "checklist" || value === "timeline") setMode(value);
         }} disabled={busy}>
           <option value="chat">Ask a question</option>
           <option value="brief">Draft incident brief</option>
           <option value="checklist">Build review checklist</option>
+          <option value="timeline">Generate investigation timeline</option>
         </select>
         <textarea
           value={q}

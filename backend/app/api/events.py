@@ -41,7 +41,12 @@ def event_page(
     if category:
         filters.append(or_(SecurityEvent.event_type == category, SecurityEvent.event_type.startswith(category + ".", autoescape=True)))
     if query.strip():
-        filters.append(or_(*(func.lower(column).contains(query.strip().lower(), autoescape=True) for column in (
+        search = query.strip().lower()
+        try:
+            event_id = UUID(search)
+        except ValueError:
+            event_id = None
+        filters.append(or_(SecurityEvent.id == event_id, *(func.lower(column).contains(search, autoescape=True) for column in (
             SecurityEvent.event_type, SecurityEvent.actor, SecurityEvent.source_ip, SecurityEvent.host, SecurityEvent.outcome,
         ))))
     total = session.scalar(select(func.count()).select_from(SecurityEvent).where(*filters)) or 0

@@ -44,3 +44,15 @@ test("submits checklist mode and displays the assistant response", async ({ page
   await page.getByRole("button", { name: "Generate" }).click();
   await expect(page.getByText("Verify the source logs before escalating.")).toBeVisible();
 });
+test("generates a timeline linked to stored evidence", async ({ page }) => {
+  await openTab(page, "Investigation assistant");
+  await page.getByLabel("Investigation output").selectOption("timeline");
+  await page.getByPlaceholder("Ask about the evidence…").fill("Review login.failed");
+  await page.getByRole("button", { name: "Generate" }).click();
+  const timeline = page.getByRole("list", { name: "Investigation timeline" });
+  const link = timeline.getByRole("link", { name: /Open evidence/ }).first();
+  await expect(link).toBeVisible({ timeout: 15_000 });
+  const [vault] = await Promise.all([page.waitForEvent("popup"), link.click()]);
+  await expect(vault.getByRole("heading", { name: "Persisted evidence" })).toBeVisible();
+  await expect(vault.getByText(/1 matching/)).toBeVisible();
+});
