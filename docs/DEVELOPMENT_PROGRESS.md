@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Added incident review notes and an audit timeline API. Case edits require an analyst or administrator role.
+
 - [x] Added incident-brief and review-checklist modes to the Investigation Assistant, with evidence references in the local fallback.
 
 - [x] Investigation chat sends up to six previous turns, ranks stored events by matching event type and recency, and returns evidence IDs alongside retrieved guidance. The local retrieval fallback adapts its review advice to the evidence selected.
