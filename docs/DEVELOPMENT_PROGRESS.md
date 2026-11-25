@@ -30,6 +30,8 @@
 
 ## Phase 4 — Interactive workflows and applied ML
 
+- [x] Local Docker Compose opens a shared demo dashboard without sign-in and binds published ports to loopback. Set `THREATLENS_DEMO_MODE=false` in `.env` and rebuild to restore sign-in.
+
 - [x] Return analysts to sign-in with an explanation when the API rejects the saved workspace session.
 
 - [x] Replaced visual-only navigation with separate dashboard, evidence explorer, authentication detection, model intelligence, and evidence-bounded investigation views.

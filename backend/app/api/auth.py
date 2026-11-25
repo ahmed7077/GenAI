@@ -1,10 +1,13 @@
 from collections.abc import Generator
+from os import getenv
+from secrets import token_urlsafe
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
@@ -13,6 +16,7 @@ from app.security import create_access_token, decode_access_token, hash_password
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 bearer_scheme = HTTPBearer(auto_error=False)
+DEMO_EMAIL = "demo@threatlens.invalid"
 
 
 class RegisterRequest(BaseModel):
@@ -44,6 +48,24 @@ def get_current_user(
     session: Session = Depends(get_session),
 ) -> User:
     if credentials is None:
+        if getenv("THREATLENS_DEMO_MODE") == "true":
+            query = select(User).where(User.email == DEMO_EMAIL)
+            demo = session.scalar(query)
+            if demo is None:
+                demo = User(
+                    email=DEMO_EMAIL,
+                    password_hash=hash_password(token_urlsafe(32)),
+                    role=UserRole.ANALYST,
+                )
+                session.add(demo)
+                try:
+                    session.commit()
+                except IntegrityError:
+                    session.rollback()
+                    demo = session.scalar(query)
+                    if demo is None:
+                        raise
+            return demo
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     try:
         claims = decode_access_token(credentials.credentials)
@@ -67,6 +89,8 @@ def require_role(*roles: UserRole):
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest, session: Session = Depends(get_session)) -> TokenResponse:
     email = payload.email.strip().lower()
+    if email == DEMO_EMAIL:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is reserved")
     if session.scalar(select(User).where(User.email == email)):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered")
     user = User(email=email, password_hash=hash_password(payload.password), role=payload.role)

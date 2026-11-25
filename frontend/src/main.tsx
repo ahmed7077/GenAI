@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
+const DEMO = import.meta.env.VITE_DEMO_MODE === "true";
 type Evt = {
   id: string;
   event_type: string;
@@ -63,13 +64,13 @@ function App() {
   const [error, setError] = useState("");
   const [sessionNotice, setSessionNotice] = useState("");
   const [uploading, setUploading] = useState(false);
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = DEMO ? {} : { Authorization: `Bearer ${token}` };
   const fail = async (r: Response) => {
     const x = await r.json().catch(() => ({}));
     return typeof x.detail === "string" ? x.detail : "Request failed.";
   };
   async function refresh() {
-    if (!token) return;
+    if (!token && !DEMO) return;
     try {
       const [a, b, c, d] = await Promise.all([
         fetch(`${API}/events?limit=10000`, { headers }),
@@ -77,7 +78,7 @@ function App() {
         fetch(`${API}/models/status`, { headers }),
         fetch(`${API}/events/summary`, { headers }),
       ]);
-      if ([a, b, c, d].some((response) => response.status === 401)) {
+      if (!DEMO && [a, b, c, d].some((response) => response.status === 401)) {
         if (localStorage.getItem("threatlens_token") !== token) return;
         localStorage.removeItem("threatlens_token");
         setEvents([]);
@@ -88,7 +89,7 @@ function App() {
         setToken("");
         return;
       }
-      if (localStorage.getItem("threatlens_token") !== token) return;
+      if (!DEMO && localStorage.getItem("threatlens_token") !== token) return;
       if (!a.ok || !b.ok || !c.ok || !d.ok)
         throw Error("Unable to load the live workspace.");
       setEvents(await a.json());
@@ -122,7 +123,7 @@ function App() {
       setUploading(false);
     }
   }
-  if (!token)
+  if (!token && !DEMO)
     return (
       <>
         {sessionNotice && <p className="error" role="status">{sessionNotice}</p>}
@@ -160,7 +161,7 @@ function App() {
             </button>
           ))}
         </nav>
-        <div className="rail-bottom">
+        {!DEMO && <div className="rail-bottom">
           <button
             className="signout"
             onClick={() => {
@@ -171,7 +172,7 @@ function App() {
             <i>↗</i>
             <span>Sign out</span>
           </button>
-        </div>
+        </div>}
       </aside>
       <main>
         <header>
