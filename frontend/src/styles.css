@@ -1428,7 +1428,24 @@ tbody tr:hover {
   margin-inline: auto;
 }
 
-.activity-ring svg { display: block; width: 100%; }
+.activity-ring svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  animation: activity-ring-glow 4s ease-in-out infinite;
+}
+
+@keyframes activity-ring-glow {
+  0%, 100% { filter: drop-shadow(0 0 3px rgb(117 185 162 / 25%)); }
+  50% { filter: drop-shadow(0 0 15px rgb(117 185 162 / 85%)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-ring svg {
+    animation: none;
+    filter: drop-shadow(0 0 5px rgb(117 185 162 / 35%));
+  }
+}
 
 .activity-ring-total {
   position: absolute;
