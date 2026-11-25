@@ -39,9 +39,9 @@ async def upload_events(
 
 @router.get("", response_model=list[EventResponse])
 async def list_events(
-    limit: int = 2000, user: User = Depends(get_current_user), session: Session = Depends(get_session)
+    limit: int = 10000, user: User = Depends(get_current_user), session: Session = Depends(get_session)
 ) -> list[EventResponse]:
-    records = session.scalars(select(SecurityEvent).order_by(SecurityEvent.occurred_at.desc()).limit(min(limit, 2000))).all()
+    records = session.scalars(select(SecurityEvent).order_by(SecurityEvent.occurred_at.desc()).limit(min(limit, 10000))).all()
     return [EventResponse(id=row.id, event_type=row.event_type, occurred_at=row.occurred_at.isoformat(), source_ip=row.source_ip, host=row.host, actor=row.actor, outcome=row.outcome) for row in records]
 
 

@@ -57,6 +57,7 @@ function App() {
   );
   const [tab, setTab] = useState<Tab>("dashboard");
   const [events, setEvents] = useState<Evt[]>([]);
+  const [eventTotal, setEventTotal] = useState(0);
   const [evaluation, setEvaluation] = useState<Eval | null>(null);
   const [model, setModel] = useState<Model | null>(null);
   const [error, setError] = useState("");
@@ -69,16 +70,18 @@ function App() {
   async function refresh() {
     if (!token) return;
     try {
-      const [a, b, c] = await Promise.all([
-        fetch(`${API}/events`, { headers }),
+      const [a, b, c, d] = await Promise.all([
+        fetch(`${API}/events?limit=10000`, { headers }),
         fetch(`${API}/detection/evaluate`, { headers }),
         fetch(`${API}/models/status`, { headers }),
+        fetch(`${API}/events/summary`, { headers }),
       ]);
-      if (!a.ok || !b.ok || !c.ok)
+      if (!a.ok || !b.ok || !c.ok || !d.ok)
         throw Error("Unable to load the live workspace.");
       setEvents(await a.json());
       setEvaluation(await b.json());
       setModel(await c.json());
+      setEventTotal((await d.json()).events);
       setError("");
     } catch (x) {
       setError(x instanceof Error ? x.message : "Unable to load data.");
@@ -163,6 +166,7 @@ function App() {
         {tab === "dashboard" && (
           <Dashboard
             events={events}
+            eventTotal={eventTotal}
             candidates={candidates}
             evaluation={evaluation}
             uploading={uploading}
@@ -170,7 +174,7 @@ function App() {
           />
         )}{" "}
         {tab === "events" && (
-          <Events events={events} uploading={uploading} upload={upload} />
+          <Events events={events} eventTotal={eventTotal} uploading={uploading} upload={upload} />
         )}{" "}
         {tab === "detections" && (
           <Detections
@@ -313,12 +317,14 @@ function Chart({ events }: { events: Evt[] }) {
 }
 function Dashboard({
   events,
+  eventTotal,
   candidates,
   evaluation,
   uploading,
   upload,
 }: {
   events: Evt[];
+  eventTotal: number;
   candidates: Cand[];
   evaluation: Eval | null;
   uploading: boolean;
@@ -344,7 +350,8 @@ function Dashboard({
       <section className="metrics">
         <Card
           label="Events ingested"
-          value={String(events.length).padStart(2, "0")}
+          value={String(eventTotal).padStart(2, "0")}
+          detail="Stored evidence total"
         />
         <Card
           label="Incident candidates"
@@ -380,10 +387,12 @@ function Dashboard({
 }
 function Events({
   events,
+  eventTotal,
   uploading,
   upload,
 }: {
   events: Evt[];
+  eventTotal: number;
   uploading: boolean;
   upload: (f: File) => Promise<void>;
 }) {
@@ -426,7 +435,7 @@ function Events({
             <h2>Persisted evidence</h2>
           </div>
           <span>
-            Page {safePage} of {pages} · {filtered.length} matching
+            Page {safePage} of {pages} · {filtered.length} matching · {eventTotal.toLocaleString()} stored
           </span>
         </div>
         {events.length && (

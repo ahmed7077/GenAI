@@ -36,7 +36,7 @@
 - [x] Validated the rebuilt Compose stack, health endpoint, authenticated model status, and mounted artifact metadata (400,000 sampled training records and 78 features).
 - [x] Added a bounded 30-second AI-provider timeout so unavailable model requests return a clear API error instead of leaving the investigation interface waiting indefinitely.
 - [x] Redesigned the SOC workspace with an earthy visual system, hover-reveal navigation, in-rail sign-out, responsive layouts, motion, evidence-derived event distribution chart, and a threaded investigation conversation interface.
-- [x] Corrected event retrieval so the dashboard reflects the full persisted upload (up to 2,000 records) instead of incorrectly presenting its former 100-record API page as the total.
+- [x] Corrected event retrieval so the dashboard reflects the database-backed stored-evidence total rather than a client retrieval window; interactive views now load up to 10,000 recent records while retaining the true total separately.
 - [x] Added local cybersecurity RAG retrieval with curated NIST and MITRE sources, query-time relevance scoring, returned citation metadata, and retrieval unit coverage.
 - [x] Added bounded Gemini model failover and a clearly labelled local RAG fallback so investigation responses remain available during provider capacity failures.
 - [x] Reworked the evidence vault to paginate the complete retained inventory in 50-record pages, filter by event family, and surface the event actor when the source export supplies one.
